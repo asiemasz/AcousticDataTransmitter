@@ -35,3 +35,11 @@ void gpio_set_pin(enum GPIO gpio, enum GPIO_PIN pin){
 void gpio_reset_pin(enum GPIO gpio, enum GPIO_PIN pin){
 		GPIO_Regs[gpio]->ODR &= ~(1 << pin);
 }
+
+void gpio_toggle_pin(enum GPIO gpio, enum GPIO_PIN pin){
+		GPIO_Regs[gpio]->ODR ^= (1 << pin);
+}
+
+void gpio_read_pin(enum GPIO gpio, enum GPIO_PIN pin, uint8_t* data) {
+		*data =  (GPIO_Regs[gpio]->IDR >> pin & 1);
+}

@@ -4,6 +4,7 @@
 #include <stm32f4xx.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 enum GPIO  {
     GPIO_A,
@@ -74,5 +75,9 @@ void gpio_get_input_pin_data(enum GPIO gpio, enum GPIO_PIN pin, uint8_t *data);
 void gpio_set_pin(enum GPIO gpio, enum GPIO_PIN pin);
 
 void gpio_reset_pin(enum GPIO gpio, enum GPIO_PIN pin);
+
+void gpio_toggle_pin(enum GPIO gpio, enum GPIO_PIN pin);
+
+void gpio_read_pin(enum GPIO gpio, enum GPIO_PIN pin, uint8_t* data);
 
 #endif
