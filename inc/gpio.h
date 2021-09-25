@@ -6,17 +6,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-enum GPIO  {
-    GPIO_A,
-    GPIO_B,
-    GPIO_C,
-    GPIO_D,
-    GPIO_E,
-		res1,
-	  res2,
-    GPIO_H
-};
-
 enum GPIO_PIN {
     PIN0,
     PIN1,
@@ -60,24 +49,24 @@ enum GPIO_PULL {
     GPIO_PULL_DOWN
 };
 
-void gpio_init(enum GPIO gpio);
+void gpio_init(GPIO_TypeDef* gpio);
 
-void gpio_set_pin_mode(enum GPIO gpio, enum GPIO_PIN pin, enum GPIO_MODE mode);
+void gpio_set_pin_mode(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_MODE mode);
 
-void gpio_set_pin_output_type(enum GPIO gpio, enum GPIO_PIN pin, enum GPIO_OUTPUT_TYPE type);
+void gpio_set_pin_output_type(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_OUTPUT_TYPE type);
 
-void gpio_set_pin_output_speed(enum GPIO gpio, enum GPIO_PIN pin, enum GPIO_OUTPUT_SPEED speed);
+void gpio_set_pin_output_speed(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_OUTPUT_SPEED speed);
 
-void gpio_set_pin_pull(enum GPIO gpio, enum GPIO_PIN pin, enum GPIO_PULL pull);
+void gpio_set_pin_pull(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_PULL pull);
 
-void gpio_get_input_pin_data(enum GPIO gpio, enum GPIO_PIN pin, uint8_t *data);
+void gpio_get_input_pin_data(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t *data);
 
-void gpio_set_pin(enum GPIO gpio, enum GPIO_PIN pin);
+void gpio_set_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 
-void gpio_reset_pin(enum GPIO gpio, enum GPIO_PIN pin);
+void gpio_reset_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 
-void gpio_toggle_pin(enum GPIO gpio, enum GPIO_PIN pin);
+void gpio_toggle_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 
-void gpio_read_pin(enum GPIO gpio, enum GPIO_PIN pin, uint8_t* data);
+void gpio_read_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t* data);
 
 #endif
