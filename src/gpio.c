@@ -26,11 +26,11 @@ void gpio_get_input_pin_data(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t *dat
 }
 
 void gpio_set_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin){
-		gpio->ODR |= (1 << pin);
+		gpio->BSRR |= (1 << pin);
 }
 
 void gpio_reset_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin){
-		gpio->ODR &= ~(1 << pin);
+		gpio->BSRR |= (1 << (pin + 0x10));
 }
 
 void gpio_toggle_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin){
