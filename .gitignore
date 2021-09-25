@@ -55,6 +55,10 @@ dkms.conf
 *.uvoptx
 *.uvprojx
 *.scvd
+*.uvguix.*
 Objects/
 DebugConfig/
 RTE/
+
+#else
+.vscode/
