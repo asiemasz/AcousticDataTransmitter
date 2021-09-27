@@ -40,3 +40,8 @@ void gpio_toggle_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin){
 void gpio_read_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t* data) {
 		*data =  (gpio->IDR >> pin & 1);
 }
+
+void gpio_set_alternate_function(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_ALTERNATE_FUNCTION function) {
+		uint8_t pos = pin % 8;
+		gpio->AFR[pin/8] |= ((uint32_t) function << (pos * 4));
+}

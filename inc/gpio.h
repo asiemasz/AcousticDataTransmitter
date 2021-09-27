@@ -49,6 +49,25 @@ enum GPIO_PULL {
     GPIO_PULL_DOWN
 };
 
+enum GPIO_ALTERNATE_FUNCTION {
+    GPIO_AF0,
+    GPIO_AF1,
+    GPIO_AF2,
+    GPIO_AF3,
+    GPIO_AF4,
+    GPIO_AF5,
+    GPIO_AF6,
+    GPIO_AF7,
+    GPIO_AF8,
+    GPIO_AF9,
+    GPIO_AF10,
+    GPIO_AF11,
+    GPIO_AF12,
+    GPIO_AF13,
+    GPIO_AF14,
+    GPIO_AF15
+};
+
 void gpio_init(GPIO_TypeDef* gpio);
 
 void gpio_set_pin_mode(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_MODE mode);
@@ -68,5 +87,7 @@ void gpio_reset_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 void gpio_toggle_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 
 void gpio_read_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t* data);
+
+void gpio_set_alternate_function(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_ALTERNATE_FUNCTION function);
 
 #endif
