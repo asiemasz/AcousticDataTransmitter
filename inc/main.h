@@ -1,5 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
-#include "../inc/gpio.h"
+
+#include "gpio.h"
+#include "i2c.h"
 
 #endif
