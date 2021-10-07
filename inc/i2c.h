@@ -11,15 +11,27 @@ struct i2c_pins {
 	enum GPIO_ALTERNATE_FUNCTION i2c_scl_af;
 };
 
-static struct i2c_pins i2c1_pins = {GPIOB, GPIOB, PIN7, PIN6, GPIO_AF4, GPIO_AF4};
+static struct i2c_pins i2c1_pins = {GPIOB, GPIOB, PIN9, PIN8, GPIO_AF4, GPIO_AF4};
 static struct i2c_pins i2c2_pins = {GPIOB, GPIOB, PIN3, PIN10, GPIO_AF9, GPIO_AF4};
 static struct i2c_pins i2c3_pins = {GPIOB, GPIOA, PIN4, PIN8, GPIO_AF9, GPIO_AF4};
 
-struct i2c_init_struct {
+typedef struct i2c_device {
 	I2C_TypeDef* i2c;
-	uint32_t clock_freq;
-};
+	struct i2c_pins pins;
+	uint8_t device_addr;
+} i2c_device; 
 
-void i2c_init(struct i2c_init_struct);
+void i2c_init(I2C_TypeDef * i2c);
 
+void i2c_write(i2c_device* dev, uint8_t reg, uint8_t data);
+
+void i2c_read(i2c_device* dev, uint8_t reg, void* data, uint8_t size);
+
+void i2c_start(I2C_TypeDef * i2c);
+
+void i2c_stop(I2C_TypeDef * i2c);
+
+void i2c_byte_write(I2C_TypeDef * i2c, uint8_t data);
+
+void i2c_address_select(I2C_TypeDef *i2c, uint8_t address);
 #endif
