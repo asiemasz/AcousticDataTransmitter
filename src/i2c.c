@@ -3,6 +3,7 @@
 
 
 void i2c_init(I2C_TypeDef * i2c) {
+	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 	//enable selected i2c peripheral clock
 	RCC->APB1ENR |= (1 << ((uint32_t)i2c - APB1PERIPH_BASE)/0x400UL);
 
@@ -49,28 +50,30 @@ void i2c_init(I2C_TypeDef * i2c) {
 	i2c->CR1 |= I2C_CR1_PE_Msk;
 }
 
-void i2c_start(I2C_TypeDef * i2c) {
+static void i2c_start(I2C_TypeDef * i2c) {
+
 	//enable the ACK bit
-	i2c->CR1 |= I2C_CR1_ACK;
+	//i2c->CR1 |= I2C_CR1_ACK;
 	//generate start condition
 	i2c->CR1 |= I2C_CR1_START;
+	while (!(i2c->SR1 & I2C_SR1_SB)); 		// Wait for EV5
+
 }
 
-void i2c_stop(I2C_TypeDef * i2c) {
+static void i2c_stop(I2C_TypeDef * i2c) {
 	i2c->CR1 |= I2C_CR1_STOP;
 }
 
-void i2c_byte_write(I2C_TypeDef * i2c, uint8_t data) {
+static void i2c_byte_write(I2C_TypeDef * i2c, uint8_t data) {
 	while(!(i2c->SR1 & I2C_SR1_TXE)); //wait for TXE bit to be set (Data register empty)
 	i2c->DR = data;
 	while(!(i2c->SR1 & I2C_SR1_BTF));//wait for BTF bit to be set (Byte transfer finished);
 
 }
-void i2c_address_select(I2C_TypeDef *i2c, uint8_t address) {
+static void i2c_address_select(I2C_TypeDef *i2c, uint8_t address) {
 	i2c->DR = address;
 	while (!(i2c->SR1 & I2C_SR1_ADDR));  // wait for ADDR bit to be set
-	uint32_t temp = i2c->SR1 | i2c->SR2;  // read SR1 and SR2 to clear the ADDR bit
-  temp = 0;
+	(void) i2c->SR2;  // read SR1 and SR2 to clear the ADDR bit
 }
 
 static void i2c_read_data(I2C_TypeDef* i2c,uint8_t addr, uint8_t* data, uint8_t size) {
@@ -128,4 +131,41 @@ void i2c_read(i2c_device* dev, uint8_t reg, void* data, uint8_t size) {
 	i2c_read_data(dev->i2c, dev->device_addr+0x1, data, size);
 	i2c_stop(dev->i2c);
 }
+
+void i2c_transmit(i2c_device* dev, uint8_t* data, uint8_t length) {
+	i2c_start(dev->i2c);
+	i2c_address_select(dev->i2c, dev->device_addr);
+	for(int i = 0; i < length; i++) {
+		i2c_byte_write(dev->i2c, data[i]);
+	}
+	i2c_stop(dev->i2c);
+}
+
+void i2c_receive(i2c_device* dev, uint8_t* data, uint8_t length) {
+	uint8_t remaining = length;
+	i2c_start(dev->i2c);
+	i2c_address_select(dev->i2c, dev->device_addr+0x1);
+	i2c_start(dev->i2c);
+	while(remaining > 2) {
+		//wait for RxNE bit to be set
+		while(!(dev->i2c->SR1 & I2C_SR1_RXNE));
+		//read data from data register
+		data[length - remaining] = (uint8_t) dev->i2c->DR;
+		//set the ACK bit to ackonwledge the data received
+		dev->i2c->CR1 |= I2C_CR1_ACK; 
+		--remaining;
+	}
+	//read the second last byte
+	//wait for RxNE bit to be set
+	while(!(dev->i2c->SR1 & I2C_SR1_RXNE));
+	data[length - remaining] = (uint8_t) dev->i2c->DR;
+		//clear the ACK bit
+	dev->i2c->CR1 &= ~I2C_CR1_ACK;
+	i2c_stop(dev->i2c);
+	remaining--;
+	//read the last byte
+	while(!(dev->i2c->SR1 & I2C_SR1_RXNE));
+	data[length - remaining] =(uint8_t) dev->i2c->DR;
+}
+
 

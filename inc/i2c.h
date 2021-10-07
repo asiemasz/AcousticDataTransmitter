@@ -27,11 +27,7 @@ void i2c_write(i2c_device* dev, uint8_t reg, uint8_t data);
 
 void i2c_read(i2c_device* dev, uint8_t reg, void* data, uint8_t size);
 
-void i2c_start(I2C_TypeDef * i2c);
+void i2c_transmit(i2c_device* dev, uint8_t* data, uint8_t length);
 
-void i2c_stop(I2C_TypeDef * i2c);
-
-void i2c_byte_write(I2C_TypeDef * i2c, uint8_t data);
-
-void i2c_address_select(I2C_TypeDef *i2c, uint8_t address);
+void i2c_receive(i2c_device* dev, uint8_t* data, uint8_t length);
 #endif
