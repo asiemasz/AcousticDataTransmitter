@@ -93,16 +93,18 @@ static void i2c_read_data(I2C_TypeDef* i2c,uint8_t addr, uint8_t* data, uint8_t 
 	else {
 		i2c_address_select(i2c, addr);
 		while(remaining > 2) {
+			i2c->CR1 |= I2C_CR1_ACK; 
+
 			//wait for RxNE bit to be set
 			while(!(i2c->SR1 & I2C_SR1_RXNE));
 			//read data from data register
 			data[size - remaining] = (uint8_t) i2c->DR;
 			//set the ACK bit to ackonwledge the data received
-			i2c->CR1 |= I2C_CR1_ACK; 
 			--remaining;
 		}
 		//read the second last byte
 		//wait for RxNE bit to be set
+		i2c->CR1 |= I2C_CR1_ACK; 
 		while(!(i2c->SR1 & I2C_SR1_RXNE));
 		data[size - remaining] =(uint8_t) i2c->DR;
 		//clear the ACK bit
@@ -127,6 +129,7 @@ void i2c_read(i2c_device* dev, uint8_t reg, void* data, uint8_t size) {
 	i2c_start(dev->i2c);
 	i2c_address_select(dev->i2c,dev->device_addr);
 	i2c_byte_write(dev->i2c,reg);
+	i2c_stop(dev->i2c);
 	i2c_start(dev->i2c);
 	i2c_read_data(dev->i2c, dev->device_addr+0x1, data, size);
 	i2c_stop(dev->i2c);
@@ -143,20 +146,27 @@ void i2c_transmit(i2c_device* dev, uint8_t* data, uint8_t length) {
 
 void i2c_receive(i2c_device* dev, uint8_t* data, uint8_t length) {
 	uint8_t remaining = length;
+
 	i2c_start(dev->i2c);
+
+	//set the ACK bit to ackonwledge the data received
+	dev->i2c->CR1 |= I2C_CR1_ACK; 
+	
 	i2c_address_select(dev->i2c, dev->device_addr+0x1);
-	i2c_start(dev->i2c);
+	
 	while(remaining > 2) {
+		dev->i2c->CR1 |= I2C_CR1_ACK; 
+
 		//wait for RxNE bit to be set
 		while(!(dev->i2c->SR1 & I2C_SR1_RXNE));
 		//read data from data register
 		data[length - remaining] = (uint8_t) dev->i2c->DR;
-		//set the ACK bit to ackonwledge the data received
-		dev->i2c->CR1 |= I2C_CR1_ACK; 
+
 		--remaining;
 	}
 	//read the second last byte
 	//wait for RxNE bit to be set
+	dev->i2c->CR1 |= I2C_CR1_ACK; 
 	while(!(dev->i2c->SR1 & I2C_SR1_RXNE));
 	data[length - remaining] = (uint8_t) dev->i2c->DR;
 		//clear the ACK bit
