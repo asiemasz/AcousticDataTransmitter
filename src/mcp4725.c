@@ -70,7 +70,7 @@ void MC4725_setValue(MCP4725* dev, uint16_t value, MCP4725_COMMAND_MODE mode) {
 
 void MCP4725_setVoltage(MCP4725* dev, float voltage, MCP4725_COMMAND_MODE mode) {
 	uint16_t value = 0;
-	if (voltage <= 0) {
+	if (voltage < 0) {
 		value = MCP4725_MAX_VAL;
 	}
 	else {
