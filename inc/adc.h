@@ -21,7 +21,7 @@ enum ADC_DATA_ALIGNMENT {
     ADC_DATA_ALIGNMENT_right,
     ADC_DATA_ALIGNMENT_left
 };
-
+/*
 enum ADC_SCAN_CONVERSION_MODE {
     
 };
@@ -41,13 +41,13 @@ enum ADC_DMA_CONTINUOUS_REQUESTS {
 enum ADC_sampleTime {
 
 };
-
+*/
 
 
 typedef struct ADC_initStruct {
-    enum CLOCK_PRESCALLER;
-    enum RESOLUTION;
-    enum ADC_DATA_ALIGNMENT;
+    enum ADC_CLOCK_PRESCALLER clockPrescaller;
+    enum ADC_RESOLUTION resolution;
+    enum ADC_DATA_ALIGNMENT dataAlignment;
 } ADC_initStruct;
 
 void adc_init(ADC_initStruct adc);
