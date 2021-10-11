@@ -72,8 +72,11 @@ typedef struct ADC_initStruct {
     enum ADC_CONTINUOUS_CONVERSION_MODE continuous;
     enum ADC_DISCONTINUOUS_CONVERSION_MODE discontinuous;
     enum ADC_SCAN_CONVERSION_MODE scan;
+		uint16_t maxValue;
+		float refVoltage;
 } ADC_initStruct;
 
-void adc_init(ADC_initStruct adc);
+void adc_init(ADC_initStruct* adc);
 
+float adc_poll()
 #endif
