@@ -4,7 +4,7 @@ static void MCP4725_writeCommand(MCP4725* dev, uint16_t value, MCP4725_COMMAND_M
 	uint8_t buffer[3];
 	switch(mode) {
 		case MCP4725_FAST_MODE:
-			buffer[0] = mode | (power << 4) | ((uint8_t)(value/256));
+			buffer[0] = (uint8_t)mode |(uint8_t) (power << 4) | ((value/256));
 			buffer[1] = ((uint8_t) (value % 256));
 
 			i2c_transmit(&(dev->i2c), buffer, 2);
@@ -12,7 +12,7 @@ static void MCP4725_writeCommand(MCP4725* dev, uint16_t value, MCP4725_COMMAND_M
 
 		case MCP4725_DAC_MODE:
 		case MCP4725_DAC_EEPROM_MODE:
-			buffer[0] = mode | (power << 1);
+			buffer[0] = (uint8_t)mode |(uint8_t) (power << 1);
 			buffer[1] = (uint8_t)(value/256);
 			buffer[2] = (uint8_t)(value%256);
 
@@ -33,7 +33,7 @@ static uint16_t MCP4725_readData(MCP4725* dev, MCP4725_READ_MODE mode) {
 		case MCP4725_READ_DAC:
 		case MCP4725_READ_EEPROM:
 			ret = buffer[mode-2];
-			ret = (ret << 8) | buffer[mode-1];
+			ret = (uint16_t)(ret << 8) | buffer[mode-1];
 			break;
 	}
 
@@ -52,11 +52,11 @@ MCP4725 MCP4725_init(I2C_TypeDef * i2c_dev, MCP4725_ADDRESS addr, float vRef, MC
 		_dev.i2c.pins = i2c2_pins;
 	else 
 		_dev.i2c.pins = i2c3_pins;
-	if(vRef == 0)
+	if(vRef <= 0)
 		_dev.refVoltage = MCP4725_REF_VOLT;
 	else
 		_dev.refVoltage = vRef;
-	_dev.bitsPerVolt = (float)MCP4725_STEPS / _dev.refVoltage;
+	_dev.bitsPerVolt = (uint16_t)((float) MCP4725_STEPS / _dev.refVoltage);
 	if(mode == 0)
 		_dev.powerDownMode = MCP4725_POWER_DOWN_OFF;
 	else
@@ -74,7 +74,7 @@ void MCP4725_setVoltage(MCP4725* dev, float voltage, MCP4725_COMMAND_MODE mode) 
 		value = MCP4725_MAX_VAL;
 	}
 	else {
-		value = voltage * dev->bitsPerVolt;
+		value = (uint16_t)(voltage * dev->bitsPerVolt);
 	}
 	MCP4725_writeCommand(dev, value, mode, dev->powerDownMode);
 }
@@ -85,8 +85,8 @@ uint16_t MCP4725_getValue(MCP4725* dev) {
 }
 
 float MCP4725_getVoltage(MCP4725* dev) {
-	float value = (float) MCP4725_getValue(dev);
-	return value / (float) dev->bitsPerVolt;
+	uint16_t value = MCP4725_getValue(dev);
+	return (float)value / (float) dev->bitsPerVolt;
 }
 
 float MCP4725_getEEPROMVoltage(MCP4725 *dev) {
@@ -96,15 +96,15 @@ float MCP4725_getEEPROMVoltage(MCP4725 *dev) {
 }
 
 uint8_t MCP4725_getPowerType(MCP4725 *dev) {
-	uint8_t value = MCP4725_readData(dev, MCP4725_READ_SETTINGS);
+	uint8_t value = (uint8_t) MCP4725_readData(dev, MCP4725_READ_SETTINGS);
 
 	value = value & 0x06;
-	return (value >> 1);
+	return (value >> 1U);
 }
 
 uint8_t MCP4725_getEEPROMPowerType(MCP4725 *dev) {
 	uint16_t value = MCP4725_readData(dev, MCP4725_READ_EEPROM);
-	value = value << 1;
+	value = ((uint16_t)(value << 1));
 	return (uint8_t) (value >> 14);
 }
 
