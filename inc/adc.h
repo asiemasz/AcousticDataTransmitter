@@ -78,7 +78,7 @@ enum ADC_EXTERNAL_TRIG {
 		ADC_EXTERNAL_TRIG_TIMER5_CC1,
 		ADC_EXTERNAL_TRIG_TIMER5_CC2,
 		ADC_EXTERNAL_TRIG_TIMER5_CC3,
-		ADC_EXTERNAL_TRIG_EXTI_LINE11 = 15;
+		ADC_EXTERNAL_TRIG_EXTI_LINE11 = 15
 };
 /*
 enum ADC_DMA_CONTINUOUS_REQUESTS {
@@ -88,7 +88,6 @@ enum ADC_DMA_CONTINUOUS_REQUESTS {
 
 */
 
-
 typedef struct ADC_initStruct {
     enum ADC_CLOCK_PRESCALLER clockPrescaller;
     enum ADC_RESOLUTION resolution;
@@ -96,6 +95,7 @@ typedef struct ADC_initStruct {
     enum ADC_CONTINUOUS_CONVERSION_MODE continuous;
     enum ADC_DISCONTINUOUS_CONVERSION_MODE discontinuous;
     enum ADC_SCAN_CONVERSION_MODE scan;
+		enum ADC_EXTERNAL_TRIG_MODE ext_mode;
     enum ADC_EXTERNAL_TRIG ext_trig;
 		uint16_t maxValue;
 		float refVoltage;
