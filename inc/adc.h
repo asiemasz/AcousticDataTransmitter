@@ -2,6 +2,7 @@
 #define ADC_H
 
 #include <stm32f401xe.h>
+#include <assert.h>
 
 #define ADC_REGULAR_SEQUENCE_MAX_LENGTH 16
 #define ADC_INJECTED_SEQUENCE_MAX_LENGTH 16
