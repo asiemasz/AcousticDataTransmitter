@@ -7,7 +7,6 @@
 #define ADC_REGULAR_SEQUENCE_MAX_LENGTH 16
 #define ADC_INJECTED_SEQUENCE_MAX_LENGTH 16
 
-
 enum ADC_RESOLUTION {
     ADC_RESOLUTION_12,
     ADC_RESOLUTION_10,
@@ -78,5 +77,9 @@ typedef struct ADC_initStruct {
 
 void adc_init(ADC_initStruct* adc);
 
-float adc_poll()
+void adc_start(void);
+
+uint16_t adc_poll(uint8_t channel);
+
+float adc_getVoltage(ADC_initStruct* adc);
 #endif
