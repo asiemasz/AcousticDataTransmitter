@@ -39,6 +39,12 @@ void adc_init(ADC_initStruct *adc)
   //set adc conversion number
   ADC1->SQR1 |= (uint32_t) (adc->conversionNumber - 1) << ADC_SQR1_L_Pos;
 
+  //enable dma mode
+  if(adc->dma) {
+    ADC1->CR2 |= (uint32_t) (adc->dma) << ADC_CR2_DMA_Pos;
+    ADC1->CR2 |= ADC_CR2_EOCS_Msk;
+  }
+
   //enable ADC
   ADC1->CR2 |= ADC_CR2_ADON;
 
@@ -58,7 +64,7 @@ void adc_init(ADC_initStruct *adc)
     break;
   }
 
-  adc->refVoltage = (float)3.3;
+  adc->refVoltage = (float)3.3; //TODO: sprawdzić w datasheecie jaka faktyczna
 }
 
 void adc_start()
