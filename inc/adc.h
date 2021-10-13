@@ -40,7 +40,6 @@ enum ADC_SAMPLING_TIME {
 
 #define ADC_REAL_SAMPLING_TIME(samplingTime, resolution) (samplingTime + (12 - 2 * resolution))
 
-
 enum ADC_SCAN_CONVERSION_MODE {
     ADC_SCAN_CONVERSION_MODE_DISABLED,
     ADC_SCAN_CONVERSION_MODE_ENABLED
@@ -80,13 +79,11 @@ enum ADC_EXTERNAL_TRIG {
 		ADC_EXTERNAL_TRIG_TIMER5_CC3,
 		ADC_EXTERNAL_TRIG_EXTI_LINE11 = 15
 };
-/*
+
 enum ADC_DMA_CONTINUOUS_REQUESTS {
-
+      ADC_DMA_CONTINUOUS_REQUEST_DISABLED,
+      ADC_DMA_CONTINUOUS_REQUEST_ENABLED
 };
-
-
-*/
 
 typedef struct ADC_initStruct {
     enum ADC_CLOCK_PRESCALLER clockPrescaller;
@@ -95,8 +92,9 @@ typedef struct ADC_initStruct {
     enum ADC_CONTINUOUS_CONVERSION_MODE continuous;
     enum ADC_DISCONTINUOUS_CONVERSION_MODE discontinuous;
     enum ADC_SCAN_CONVERSION_MODE scan;
-		enum ADC_EXTERNAL_TRIG_MODE ext_mode;
+	enum ADC_EXTERNAL_TRIG_MODE ext_mode;
     enum ADC_EXTERNAL_TRIG ext_trig;
+    enum ADC_DMA_CONTINUOUS_REQUESTS dma;
 		uint16_t maxValue;
 		float refVoltage;
         uint8_t conversionNumber;
