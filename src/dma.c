@@ -15,7 +15,7 @@ void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request) {
 		stream->CR &= ~DMA_SxCR_EN;
 	}//wait till stream is disabled
 	while(stream->CR & DMA_SxCR_EN);
-	
+
 	//select channel to be configured
 	stream->CR |= (uint32_t) request->channel << DMA_SxCR_CHSEL_Pos;
 
@@ -44,10 +44,15 @@ void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request) {
 			stream->M1AR |= request->memory1Address;
 			break;
 	}
+	if(request->memInc) {
+		stream->CR |= DMA_SxCR_MINC;
+	}
+	if(request->periphInc) {
+		stream->CR |= DMA_SxCR_PINC;
+	}
 	
 	if(request->mode == DMA_CIRCULAR_MODE) {
 		stream->CR |= DMA_SxCR_CIRC;
-		stream->FCR |= DMA_SxFCR_DMDIS;
 		stream->FCR |= (uint32_t) request->fifoThreshold << DMA_SxFCR_FTH_Pos;
 	}
 	else {

@@ -57,15 +57,26 @@ enum DMA_FIFO_THRESHOLD {
     DMA_FIFO_THRESHOLD_FULL
 };
 
+enum DMA_INC {
+    DMA_INC_DISABLE,
+    DMA_INC_ENABLE
+};
+
 typedef struct DMA_requestStruct {
 	enum DMA_CHANNEL 		channel;
 	enum DMA_DIRECTION	direction;
 	enum DMA_MODE 			mode;
-	enum DMA_DATA_SIZE	periphData;
-	enum DMA_DATA_SIZE	memoryData;
+	enum DMA_DATA_SIZE	periphDataSize;
+	enum DMA_DATA_SIZE	memoryDataSize;
 	enum DMA_PRIORITY_LEVEL priority;
+    enum DMA_INC memInc;
+    enum DMA_INC periphInc;
 	enum DMA_FIFO_MODE	fifoMode;
 	enum DMA_FIFO_THRESHOLD fifoThreshold;
+    uint32_t peripheralAddress;
+    uint32_t memory0Address;
+    uint32_t memory1Address;
+    uint16_t dataNumber;
 } DMA_requestStruct;
 
 void dma_init(DMA_TypeDef* dma);
