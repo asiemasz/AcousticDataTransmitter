@@ -40,16 +40,15 @@ enum DMA_DIRECTION {
     DMA_DIRECTION_MEMORY_TO_MEMORY
 };
 
-enum DMA_DIRECT_MODE {
-    DMA_DIRECT_MODE_ENABLED,
-    DMA_DIRECT_MODE_DISABLED
+enum DMA_MODE {
+    DMA_DIRECT_MODE,
+    DMA_CIRCULAR_MODE
 };
 
-enum DMA_CIRCULAR_MODE {
-    DMA_CIRCULAR_MODE_DISABLED,
-    DMA_CIRCULAR_MODE_ENABLED
+enum DMA_FIFO_MODE {
+		DMA_FIFO_MODE_DISABLED,
+		DMA_FIFO_MODE_ENABLED
 };
-
 
 enum DMA_FIFO_THRESHOLD {
     DMA_FIFO_THRESHOLD_1_4_FULL,
@@ -58,12 +57,19 @@ enum DMA_FIFO_THRESHOLD {
     DMA_FIFO_THRESHOLD_FULL
 };
 
-typedef struct DMA_channelStruct {
-	
-} DMA_channelStruct;
+typedef struct DMA_requestStruct {
+	enum DMA_CHANNEL 		channel;
+	enum DMA_DIRECTION	direction;
+	enum DMA_MODE 			mode;
+	enum DMA_DATA_SIZE	periphData;
+	enum DMA_DATA_SIZE	memoryData;
+	enum DMA_PRIORITY_LEVEL priority;
+	enum DMA_FIFO_MODE	fifoMode;
+	enum DMA_FIFO_THRESHOLD fifoThreshold;
+} DMA_requestStruct;
 
 void dma_init(DMA_TypeDef* dma);
     
-void dma_stream_config(DMA_Stream_TypeDef* stream);
+void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request);
 
 #endif
