@@ -1,6 +1,8 @@
 #ifndef DMA_H
 #define DMA_H
 
+#include "stm32f401xe.h"
+
 enum DMA_CHANNEL {
     DMA_CHANNEL_0,
     DMA_CHANNEL_1,
@@ -10,17 +12,6 @@ enum DMA_CHANNEL {
     DMA_CHANNEL_5,
     DMA_CHANNEL_6,
     DMA_CHANNEL_7
-};
-
-enum DMA_STREAM {
-    DMA_STREAM_0,
-    DMA_STREAM_1,
-    DMA_STREAM_2,
-    DMA_STREAM_3,
-    DMA_STREAM_4,
-    DMA_STREAM_5,
-    DMA_STREAM_6,
-    DMA_STREAM_7
 };
 
 enum DMA_INCREMENTAL_BURST {
@@ -54,6 +45,12 @@ enum DMA_DIRECT_MODE {
     DMA_DIRECT_MODE_DISABLED
 };
 
+enum DMA_CIRCULAR_MODE {
+    DMA_CIRCULAR_MODE_DISABLED,
+    DMA_CIRCULAR_MODE_ENABLED
+};
+
+
 enum DMA_FIFO_THRESHOLD {
     DMA_FIFO_THRESHOLD_1_4_FULL,
     DMA_FIFO_THRESHOLD_1_2_FULL,
@@ -61,5 +58,12 @@ enum DMA_FIFO_THRESHOLD {
     DMA_FIFO_THRESHOLD_FULL
 };
 
+typedef struct DMA_channelStruct {
+	
+} DMA_channelStruct;
+
+void dma_init(DMA_TypeDef* dma);
+    
+void dma_stream_config(DMA_Stream_TypeDef* stream);
 
 #endif
