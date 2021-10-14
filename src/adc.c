@@ -39,12 +39,6 @@ void adc_init(ADC_initStruct *adc)
   //set adc conversion number
   ADC1->SQR1 |= (uint32_t) (adc->conversionNumber - 1) << ADC_SQR1_L_Pos;
 
-  //enable dma mode
-  if(adc->dma) {
-    ADC1->CR2 |= (uint32_t) (adc->dma) << ADC_CR2_DMA_Pos;
-    ADC1->CR2 |= ADC_CR2_EOCS_Msk;
-  }
-
   //enable ADC
   ADC1->CR2 |= ADC_CR2_ADON;
 
@@ -105,6 +99,32 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
     ADC1->SQR1 |= (uint32_t) channel->number << (order-13) * 5; 
   }
 }
+
+void adc_startDMA(ADC_initStruct* adc, void* buf, uint8_t size) {
+  dma_init(DMA2);
+  DMA_requestStruct request;
+  request.channel = DMA_CHANNEL_0;
+  request.direction = DMA_DIRECTION_PERIPHERAL_TO_MEMORY;
+  request.memInc = DMA_INC_ENABLE;
+  request.periphDataSize = DMA_DATA_SIZE_HALF_WORD;
+  request.memoryDataSize = DMA_DATA_SIZE_HALF_WORD;
+  request.mode = DMA_CIRCULAR_MODE;
+  request.fifoMode = DMA_FIFO_MODE_DISABLED;
+	request.fifoThreshold = 0;
+  request.priority = DMA_PRIORITY_LEVEL_HIGH;
+  request.dataNumber = size;
+  request.peripheralAddress = &(ADC1->DR);
+  request.memory0Address = (uint32_t *)buf;
+
+  dma_streamConfig(DMA2_Stream4, &request);
+  ADC1->CR2 |= ADC_CR2_EOCS;
+  ADC1->CR2 |= ADC_CR2_DMA;
+  if(adc->dma) {
+    ADC1->CR2 |= ADC_CR2_DDS;
+  }
+	adc_start();
+}
+
 
 uint16_t adc_getValue(void) {
   adc_pollForConversion();
