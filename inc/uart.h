@@ -51,14 +51,13 @@ enum UART_MODE {
 };
 
 typedef struct UART_initStruct {
-    struct uart_pins pins;
-    UART_MODE mode;
+    enum UART_MODE mode;
     uint32_t baudRate;
-    UART_WORD_LENGTH wordLength;
-    UART_STOP_BITS stopBits;
-    UART_PARITY_CONTROL parityControl;
-    UART_PARITY_SELECTION paritySelection;
-    UART_OVERSAMPLING_MODE oversampling;
+    enum UART_WORD_LENGTH wordLength;
+    enum UART_STOP_BITS stopBits;
+    enum UART_PARITY_CONTROL parityControl;
+    enum UART_PARITY_SELECTION paritySelection;
+    enum UART_OVERSAMPLING_MODE oversampling;
 } UART_initStruct;
 
 void uart_init(USART_TypeDef* uart, UART_initStruct* init);
