@@ -3,6 +3,7 @@
 
 #include "stm32f401xe.h"
 #include "gpio.h"
+#include "assert.h"
 
 struct uart_pins {
 	GPIO_TypeDef* uart_tx_port;
@@ -13,9 +14,9 @@ struct uart_pins {
 	enum GPIO_ALTERNATE_FUNCTION uart_rx_af;
 };
 
-static struct uart_pins uart1_pins {GPIOA, GPIOA, PIN9, PIN10, GPIO_AF7, GPIO_AF7};
-static struct uart_pins uart2_pins {GPIOA, GPIOA, PIN2, PIN3, GPIO_AF7, GPIO_AF7};
-static struct uart_pins uart3_pins {GPIOA, GPIOA, PIN11, PIN12, GPIO_AF8, GPIO_AF8};
+static struct uart_pins uart1_pins = {GPIOA, GPIOA, PIN9, PIN10, GPIO_AF7, GPIO_AF7};
+static struct uart_pins uart2_pins = {GPIOA, GPIOA, PIN2, PIN3, GPIO_AF7, GPIO_AF7};
+static struct uart_pins uart6_pins = {GPIOA, GPIOA, PIN11, PIN12, GPIO_AF8, GPIO_AF8};
 
 enum UART_OVERSAMPLING_MODE {
     UART_OVERSAMPLING_BY_16,
@@ -45,12 +46,13 @@ enum UART_STOP_BITS {
 };
 
 enum UART_MODE {
-    UART_TRANSMITTER_AND_RECEIVER,
+    UART_RECEIVER_ONLY,
     UART_TRANSMITTER_ONLY,
-    UART_RECEIVER_ONLY
+    UART_TRANSMITTER_AND_RECEIVER,
 };
 
 typedef struct UART_initStruct {
+    USART_TypeDef* uart;
     enum UART_MODE mode;
     uint32_t baudRate;
     enum UART_WORD_LENGTH wordLength;
@@ -60,7 +62,7 @@ typedef struct UART_initStruct {
     enum UART_OVERSAMPLING_MODE oversampling;
 } UART_initStruct;
 
-void uart_init(USART_TypeDef* uart, UART_initStruct* init);
+void uart_init(UART_initStruct* init);
 
 
 
