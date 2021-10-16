@@ -115,7 +115,7 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
 
 void adc_pollForConversion(void);
 
-void adc_startDMA(ADC_initStruct* adc, void* buf, uint8_t size);
+void adc_startDMA(ADC_initStruct* adc,volatile uint32_t* buf, uint8_t size);
 
 uint16_t adc_getValue(void);
 
