@@ -100,7 +100,7 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
   }
 }
 
-void adc_startDMA(ADC_initStruct* adc, void* buf, uint8_t size) {
+void adc_startDMA(ADC_initStruct* adc, volatile uint32_t* buf, uint8_t size) {
   dma_init(DMA2);
   DMA_requestStruct request;
   request.channel = DMA_CHANNEL_0;
@@ -114,7 +114,7 @@ void adc_startDMA(ADC_initStruct* adc, void* buf, uint8_t size) {
   request.priority = DMA_PRIORITY_LEVEL_HIGH;
   request.dataNumber = size;
   request.peripheralAddress = &(ADC1->DR);
-  request.memory0Address = (uint32_t *)buf;
+  request.memory0Address = buf;
 
   dma_streamConfig(DMA2_Stream4, &request);
   ADC1->CR2 |= ADC_CR2_EOCS;

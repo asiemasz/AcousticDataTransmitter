@@ -73,9 +73,9 @@ typedef struct DMA_requestStruct {
     enum DMA_INC periphInc;
 	enum DMA_FIFO_MODE	fifoMode;
 	enum DMA_FIFO_THRESHOLD fifoThreshold;
-    uint32_t peripheralAddress;
-    uint32_t memory0Address;
-    uint32_t memory1Address;
+    volatile uint32_t* peripheralAddress;
+    volatile uint32_t* memory0Address;
+    volatile uint32_t* memory1Address;
     uint16_t dataNumber;
 } DMA_requestStruct;
 

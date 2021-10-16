@@ -36,12 +36,12 @@ void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request) {
 	switch(request->direction) {
 		case DMA_DIRECTION_PERIPHERAL_TO_MEMORY:
 		case DMA_DIRECTION_MEMORY_TO_PERIPHERAL:
-			stream->PAR |= request->peripheralAddress;
-			stream->M0AR |= request->memory0Address;
+			stream->PAR |= (uint32_t)request->peripheralAddress;
+			stream->M0AR |= (uint32_t)request->memory0Address;
 			break;
 		case DMA_DIRECTION_MEMORY_TO_MEMORY:
-			stream->M0AR |= request->memory0Address;
-			stream->M1AR |= request->memory1Address;
+			stream->M0AR |= (uint32_t)request->memory0Address;
+			stream->M1AR |= (uint32_t)request->memory1Address;
 			break;
 	}
 	if(request->memInc) {
