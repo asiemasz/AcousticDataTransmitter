@@ -46,7 +46,7 @@ enum UART_STOP_BITS {
 };
 
 enum UART_MODE {
-    UART_RECEIVER_ONLY,
+    UART_RECEIVER_ONLY = 1,
     UART_TRANSMITTER_ONLY,
     UART_TRANSMITTER_AND_RECEIVER,
 };
@@ -64,6 +64,10 @@ typedef struct UART_initStruct {
 
 void uart_init(UART_initStruct* init);
 
+void uart_sendChar(UART_initStruct* init, char c);
 
+void uart_sendString(UART_initStruct* init, char *s);
+
+uint8_t uart_getChar(UART_initStruct* init);
 
 #endif

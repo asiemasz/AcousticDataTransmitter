@@ -64,3 +64,21 @@ void uart_init(UART_initStruct *init)
     else
         init->uart->BRR = ((mant << 4U) + (fraq & 0xF0U) + (fraq & 0x0FU));
 }
+
+void uart_sendChar(UART_initStruct* init, char c) {
+    //load data to data register
+    init->uart->DR = c;
+    //wait for TC to be set (Transmission Complete)
+    while(!(init->uart->SR & USART_SR_TC));
+}
+
+void uart_sendString(UART_initStruct* init, char *s) {
+    while(*s) uart_sendChar(init, *s++);
+}
+
+uint8_t uart_getChar(UART_initStruct* init) {
+    uint8_t res;
+    while(!(init->uart->SR & USART_SR_RXNE));
+    res = (uint8_t) init->uart->DR;
+    return res;
+}
