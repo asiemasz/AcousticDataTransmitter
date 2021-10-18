@@ -1,7 +1,8 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include <stm32f4xx.h>
+#include <stm32f401xe.h>
+#include <assert.h>
 
 enum TIMER_COUNTER_DIRECTION {
     TIMER_COUNTER_DIRECTION_UPCOUNTER,
@@ -10,12 +11,11 @@ enum TIMER_COUNTER_DIRECTION {
 
 typedef struct TIMER_initStruct {
     TIM_TypeDef* tim;
-    uint32_t counter;
     uint16_t prescaler;
     uint32_t autoReload;
     enum TIMER_COUNTER_DIRECTION direction;
 } TIMER_initStruct;
 
-void timer_init(TIMER_initStruct init);
+void timer_init(TIMER_initStruct* init);
 
 #endif
