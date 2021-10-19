@@ -58,7 +58,7 @@ void adc_init(ADC_initStruct *adc)
     break;
   }
 
-  adc->refVoltage = (float)3.3; //TODO: sprawdzić w datasheecie jaka faktyczna
+  adc->refVoltage = 3.3f;
 }
 
 void adc_start()
