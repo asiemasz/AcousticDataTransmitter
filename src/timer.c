@@ -40,7 +40,7 @@ void timer_start(TIMER_initStruct* init) {
 
 void timer_clearITflag(TIMER_initStruct* init) {
 		init->tim->SR = 0x0;
-		while(TIM2->SR);
+		while(init->tim->SR);
 }
 
 uint32_t timer_getCounterVal(TIMER_initStruct* init) {
