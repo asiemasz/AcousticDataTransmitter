@@ -5,8 +5,8 @@
 #include <assert.h>
 
 enum TIMER_COUNTER_DIRECTION {
-    TIMER_COUNTER_DIRECTION_UPCOUNTER,
-    TIMER_COUNTER_DIRECTION_DOWNCOUNTER
+    TIMER_COUNTER_DIRECTION_UP,
+    TIMER_COUNTER_DIRECTION_DOWN
 };
 
 typedef struct TIMER_initStruct {
@@ -17,5 +17,11 @@ typedef struct TIMER_initStruct {
 } TIMER_initStruct;
 
 void timer_init(TIMER_initStruct* init);
+
+void timer_start(TIMER_initStruct* init);
+
+void timer_clearITflag(TIMER_initStruct* init);
+
+uint32_t timer_getCounterVal(TIMER_initStruct* init);
 
 #endif

@@ -1,6 +1,8 @@
 #include "../inc/timer.h"
 
 void timer_init(TIMER_initStruct* init) {
+		assert(init->prescaler > 0);
+
     if(init->tim == TIM1) {
         RCC->APB2ENR |= RCC_APB2ENR_TIM11EN;
     } else if (init->tim == TIM2) {
@@ -25,8 +27,23 @@ void timer_init(TIMER_initStruct* init) {
     init->tim->CR1 |= (uint32_t) init->direction << TIM_CR1_DIR_Pos;
 		
 	//set the timer clock prescaller
-    init->tim->PSC = init->prescaler;
+    init->tim->PSC = init->prescaler - (uint8_t) 1;
 
     //set auto reload value
-    init->tim->ARR = init->autoReload;
+    init->tim->ARR = init->autoReload - (uint8_t) 1;
 }
+
+void timer_start(TIMER_initStruct* init) {
+		init->tim->CR1 |= TIM_CR1_CEN;
+		init->tim->SR = 0x0;
+}
+
+void timer_clearITflag(TIMER_initStruct* init) {
+		init->tim->SR = 0x0;
+		while(TIM2->SR);
+}
+
+uint32_t timer_getCounterVal(TIMER_initStruct* init) {
+    return init->tim->CNT;
+}
+
