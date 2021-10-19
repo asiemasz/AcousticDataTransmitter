@@ -45,7 +45,7 @@ typedef struct MCP4725 {
 } MCP4725;
 
 MCP4725 MCP4725_init(I2C_TypeDef * i2c_dev, MCP4725_ADDRESS addr, float vRef, MCP4725_POWER_DOWN_MODE mode);
-void MC4725_setValue(MCP4725* dev, uint16_t value, MCP4725_COMMAND_MODE mode);
+void MCP4725_setValue(MCP4725* dev, uint16_t value, MCP4725_COMMAND_MODE mode);
 void MCP4725_setVoltage(MCP4725* dev, float voltage, MCP4725_COMMAND_MODE mode);
 uint16_t MCP4725_getValue(MCP4725* dev);
 float MCP4725_getVoltage(MCP4725* dev);
