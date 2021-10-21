@@ -22,21 +22,30 @@ void i2c_init(I2C_TypeDef * i2c) {
 	gpio_init(i2c_pinout.i2c_scl_port);
 	if(i2c_pinout.i2c_scl_port != i2c_pinout.i2c_sda_port)
 		gpio_init(i2c_pinout.i2c_sda_port);
+
+	GPIO_pinConfigStruct scl_pin, sda_pin;
 	//set SDA and SCL pins as alternate function pins 
-	gpio_set_pin_mode(i2c_pinout.i2c_scl_port, i2c_pinout.i2c_scl_pin, GPIO_MODE_ALTERNATE_FUNCTION);
-	gpio_set_pin_mode(i2c_pinout.i2c_sda_port, i2c_pinout.i2c_sda_pin, GPIO_MODE_ALTERNATE_FUNCTION);
+	scl_pin.mode = GPIO_MODE_ALTERNATE_FUNCTION;
+	sda_pin.mode = GPIO_MODE_ALTERNATE_FUNCTION;
+
 	//set gpio pins output type to open drain
-	gpio_set_pin_output_type(i2c_pinout.i2c_scl_port, i2c_pinout.i2c_scl_pin, GPIO_OUT_TYPE_OPEN_DRAIN);
-	gpio_set_pin_output_type(i2c_pinout.i2c_sda_port, i2c_pinout.i2c_sda_pin, GPIO_OUT_TYPE_OPEN_DRAIN);
+	scl_pin.outType = GPIO_OUT_TYPE_OPEN_DRAIN;
+	sda_pin.outType = GPIO_OUT_TYPE_OPEN_DRAIN;
+
 	//set gpio pins output speed to highest possible
-	gpio_set_pin_output_speed(i2c_pinout.i2c_scl_port, i2c_pinout.i2c_scl_pin, GPIO_OUT_SPEED_VERY_HIGH);
-	gpio_set_pin_output_speed(i2c_pinout.i2c_sda_port, i2c_pinout.i2c_sda_pin, GPIO_OUT_SPEED_VERY_HIGH);
+	scl_pin.outSpeed = GPIO_OUT_SPEED_VERY_HIGH;
+	sda_pin.outSpeed = GPIO_OUT_SPEED_VERY_HIGH;
+
 	//set pull up for both pins
-	gpio_set_pin_pull(i2c_pinout.i2c_scl_port, i2c_pinout.i2c_scl_pin, GPIO_PULL_UP);
-	gpio_set_pin_pull(i2c_pinout.i2c_sda_port, i2c_pinout.i2c_sda_pin, GPIO_PULL_UP);
+	scl_pin.pullConfiguration = GPIO_PULL_UP;
+	sda_pin.pullConfiguration = GPIO_PULL_UP;
+
 	//select appropriate alternate function for both pins
-	gpio_set_alternate_function(i2c_pinout.i2c_scl_port, i2c_pinout.i2c_scl_pin, i2c_pinout.i2c_scl_af);
-	gpio_set_alternate_function(i2c_pinout.i2c_sda_port, i2c_pinout.i2c_sda_pin, i2c_pinout.i2c_sda_af);
+	scl_pin.alternateFunction = i2c_pinout.i2c_scl_af;
+	sda_pin.alternateFunction = i2c_pinout.i2c_sda_af;
+
+	gpio_setPinConfiguration(i2c_pinout.i2c_scl_port, i2c_pinout.i2c_scl_pin, &scl_pin);
+	gpio_setPinConfiguration(i2c_pinout.i2c_sda_port, i2c_pinout.i2c_sda_pin, &sda_pin);
 	
 	//reset i2c 
 	i2c->CR1 |= I2C_CR1_SWRST_Msk;

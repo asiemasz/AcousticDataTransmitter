@@ -68,26 +68,26 @@ enum GPIO_ALTERNATE_FUNCTION {
     GPIO_AF15
 };
 
+typedef struct GPIO_pinConfigStruct {
+    enum GPIO_MODE mode;
+    enum GPIO_PULL pullConfiguration;
+    enum GPIO_OUTPUT_TYPE outType;
+    enum GPIO_OUTPUT_SPEED outSpeed;
+    enum GPIO_ALTERNATE_FUNCTION alternateFunction;
+} GPIO_pinConfigStruct;
+
+void gpio_setPinConfiguration(GPIO_TypeDef* gpio, enum GPIO_PIN pin ,GPIO_pinConfigStruct* cfg);
+
 void gpio_init(GPIO_TypeDef* gpio);
 
-void gpio_set_pin_mode(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_MODE mode);
+void gpio_getPinInput(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t *data);
 
-void gpio_set_pin_output_type(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_OUTPUT_TYPE type);
+void gpio_setPin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 
-void gpio_set_pin_output_speed(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_OUTPUT_SPEED speed);
+void gpio_resetPin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 
-void gpio_set_pin_pull(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_PULL pull);
+void gpio_togglePin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
 
-void gpio_get_input_pin_data(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t *data);
-
-void gpio_set_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
-
-void gpio_reset_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
-
-void gpio_toggle_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin);
-
-void gpio_read_pin(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t* data);
-
-void gpio_set_alternate_function(GPIO_TypeDef* gpio, enum GPIO_PIN pin, enum GPIO_ALTERNATE_FUNCTION function);
+void gpio_readPin(GPIO_TypeDef* gpio, enum GPIO_PIN pin, uint8_t* data);
 
 #endif

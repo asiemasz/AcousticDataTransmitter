@@ -80,8 +80,11 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
   assert(order >= 1 && order <= adc->conversionNumber);
   //configure gpio pin as analog input
   gpio_init(channel->GPIO_port);
-  gpio_set_pin_mode(channel->GPIO_port, channel->GPIO_pin, GPIO_MODE_ANALOG);
-  gpio_set_pin_pull(channel->GPIO_port, channel->GPIO_pin, GPIO_NO_PULL);
+  GPIO_pinConfigStruct analogOut;
+  analogOut.mode = GPIO_MODE_ANALOG;
+  analogOut.outSpeed = GPIO_OUT_SPEED_VERY_HIGH;
+  analogOut.pullConfiguration = GPIO_NO_PULL;
+  gpio_setPinConfiguration(channel->GPIO_port, channel->GPIO_pin, &analogOut);
 
   //set sampling time 
   if(channel->number < 10) {
@@ -103,7 +106,6 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
 }
 
 void adc_startDMA(ADC_initStruct* adc, volatile uint32_t* buf, uint8_t size) {
-  assert(adc->scan == ADC_SCAN_CONVERSION_MODE_ENABLED);z
   dma_init(DMA2);
   DMA_requestStruct request;
   request.channel = DMA_CHANNEL_0;

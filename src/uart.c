@@ -27,11 +27,20 @@ void uart_init(UART_initStruct *init)
 
     //configure pins
     gpio_init(pins.uart_tx_port);
-	  gpio_set_pin_mode(pins.uart_tx_port, pins.uart_tx_pin, GPIO_MODE_ALTERNATE_FUNCTION);
-    gpio_set_pin_mode(pins.uart_rx_port, pins.uart_rx_pin, GPIO_MODE_ALTERNATE_FUNCTION);
-    gpio_set_alternate_function(pins.uart_tx_port, pins.uart_tx_pin, pins.uart_tx_af);
-    gpio_set_alternate_function(pins.uart_rx_port, pins.uart_rx_pin, pins.uart_rx_af);
 
+    GPIO_pinConfigStruct tx_pin, rx_pin;
+
+    tx_pin.mode = GPIO_MODE_ALTERNATE_FUNCTION;
+    rx_pin.mode = GPIO_MODE_ALTERNATE_FUNCTION;
+
+    tx_pin.outSpeed = GPIO_OUT_SPEED_HIGH;
+    rx_pin.outSpeed = GPIO_OUT_SPEED_HIGH;
+    
+    tx_pin.alternateFunction = pins.uart_tx_af;
+    rx_pin.alternateFunction = pins.uart_rx_af;
+
+    gpio_setPinConfiguration(pins.uart_tx_port, pins.uart_tx_pin, &tx_pin);
+    gpio_setPinConfiguration(pins.uart_rx_port, pins.uart_rx_pin, &rx_pin);
     //clear USART CR1 register
     init->uart->CR1 = 0x00;
     //enable usart
