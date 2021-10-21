@@ -34,13 +34,25 @@ void timer_init(TIMER_initStruct* init) {
 }
 
 void timer_start(TIMER_initStruct* init) {
-		init->tim->CR1 |= TIM_CR1_CEN;
-		init->tim->SR = 0x0;
+	init->tim->CR1 |= TIM_CR1_CEN;
+	init->tim->SR = 0x0;
 }
 
 void timer_clearITflag(TIMER_initStruct* init) {
-		init->tim->SR = 0x0;
-		while(init->tim->SR);
+	init->tim->SR = 0x0;
+	while(init->tim->SR);
+}
+
+void timer_enableIT(TIMER_initStruct* init, uint16_t its) {
+	init->tim->DIER |= its;
+}
+
+void timer_enableDMA(TIMER_initStruct* init, uint16_t dmas) {
+    timer_enableIT(init, (dmas << 8U));
+}
+
+void timer_selectTRGOUTEvent(TIMER_initStruct* init, enum TIMER_TRGOUT_EVENT event) {
+    init->tim->SMCR |= ((uint16_t) event << TIM_SMCR_ETF_Pos);
 }
 
 uint32_t timer_getCounterVal(TIMER_initStruct* init) {
