@@ -28,7 +28,9 @@ void adc_init(ADC_initStruct *adc)
   }
   else if (adc->discontinuous)
   {
+    assert(adc->scan && adc->discontinuousNumber < 9 && adc->discontinuous > 0);
     ADC1->CR1 |= ADC_CR1_DISCEN;
+    ADC1->CR1 |= ((adc->discontinuousNumber - 1U) << ADC_CR1_DISCNUM_Pos);
   }
   //enable scan mode
   if (adc->scan)
@@ -101,6 +103,7 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
 }
 
 void adc_startDMA(ADC_initStruct* adc, volatile uint32_t* buf, uint8_t size) {
+  assert(adc->scan == ADC_SCAN_CONVERSION_MODE_ENABLED);z
   dma_init(DMA2);
   DMA_requestStruct request;
   request.channel = DMA_CHANNEL_0;

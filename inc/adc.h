@@ -92,6 +92,7 @@ typedef struct ADC_initStruct {
     enum ADC_DATA_ALIGNMENT dataAlignment;
     enum ADC_CONTINUOUS_CONVERSION_MODE continuous;
     enum ADC_DISCONTINUOUS_CONVERSION_MODE discontinuous;
+        uint8_t discontinuousNumber
     enum ADC_SCAN_CONVERSION_MODE scan;
 	enum ADC_EXTERNAL_TRIG_MODE ext_mode;
     enum ADC_EXTERNAL_TRIG ext_trig;
