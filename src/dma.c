@@ -6,7 +6,8 @@ void dma_init(DMA_TypeDef* dma) {
 	}
 	else if(dma == DMA2) {
 		RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
-	}
+	}	
+	//DMA2_Stream4->CR |= DMA_SxCR_HTIE;
 }
 
 void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request) {
@@ -53,6 +54,7 @@ void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request) {
 	
 	if(request->mode == DMA_CIRCULAR_MODE) {
 		stream->CR |= DMA_SxCR_CIRC;
+		//stream->FCR |= DMA_SxFCR_DMDIS;
 		stream->FCR |= (uint32_t) request->fifoThreshold << DMA_SxFCR_FTH_Pos;
 	}
 	else {
@@ -63,3 +65,30 @@ void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request) {
 	//enable stream
 	stream->CR |= DMA_SxCR_EN;
 }
+
+void dma_streamITEnable(DMA_Stream_TypeDef* stream, uint8_t its) {
+	stream->CR |= its;
+}
+
+void dma_streamClearITFlag(DMA_TypeDef* dma, uint8_t stream, enum DMA_IT_FLAG flag) {
+	assert(stream >= 0 && stream < 8);
+	if(stream < 4) {
+		dma->LIFCR |= (1U << (flag + (stream * 6) + 4*stream/2));
+	}
+	else {
+		stream = stream - 4;
+		dma->HIFCR |= (1U << (flag + (stream * 6) + 4*stream/2));
+	}
+}
+
+uint8_t dma_streamGetITFlag(DMA_TypeDef* dma, uint8_t stream, enum DMA_IT_FLAG flag) {
+	assert(stream >= 0 && stream < 8);
+	if(stream < 4) {
+		return ((dma->LISR & (1U << (flag + (stream * 6) + 4*stream/2))) > 0);
+	}
+	else {
+		stream = stream - 4;
+		return ((dma->HISR & (1U << (flag + (stream * 6) + 4*stream/2))) > 0);
+	}
+}
+

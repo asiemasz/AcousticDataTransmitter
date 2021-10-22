@@ -2,6 +2,7 @@
 #define DMA_H
 
 #include "stm32f401xe.h"
+#include <assert.h>
 
 enum DMA_CHANNEL {
     DMA_CHANNEL_0,
@@ -79,8 +80,29 @@ typedef struct DMA_requestStruct {
     uint16_t dataNumber;
 } DMA_requestStruct;
 
+enum DMA_IT {
+	DMA_IT_DIRECT_ERROR = 2,
+	DMA_IT_TRANSFER_ERROR = 4,
+	DMA_IT_HALF_TRANSFER = 8,
+	DMA_IT_TRANSFER_COMPLETE = 16
+};
+
+enum DMA_IT_FLAG {
+	DMA_IT_FLAG_FIFO_ERROR = 0,
+	DMA_IT_FLAG_DIRECT_MODE_ERROR = 2,
+	DMA_IT_FLAG_TRANSFER_ERROR = 3,
+	DMA_IT_FLAG_HALF_TRANSFER = 4,
+	DMA_IT_FLAG_TRANSFER_COMPLETE = 5
+};
+
 void dma_init(DMA_TypeDef* dma);
     
 void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request);
+
+void dma_streamITEnable(DMA_Stream_TypeDef* stream, uint8_t its);
+
+void dma_streamClearITFlag(DMA_TypeDef* dma, uint8_t stream, enum DMA_IT_FLAG flag);
+
+uint8_t dma_streamGetITFlag(DMA_TypeDef* dma, uint8_t stream, enum DMA_IT_FLAG flag);
 
 #endif
