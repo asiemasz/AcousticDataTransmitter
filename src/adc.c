@@ -37,6 +37,17 @@ void adc_init(ADC_initStruct *adc)
   {
     ADC1->CR1 |= ADC_CR1_SCAN;
   }
+	
+	if (adc->ext_mode) {
+		ADC1->CR2 |= ((uint32_t) adc->ext_mode << ADC_CR2_EXTEN_Pos);
+		ADC1->CR2 |= ((uint32_t) adc->ext_trig << ADC_CR2_EXTSEL_Pos);
+	}
+
+	if (adc->dma) {
+		ADC1->CR2 |= ADC_CR2_EOCS;
+		ADC1->CR2 |= ADC_CR2_DDS;
+		ADC1->CR2 |= ADC_CR2_DMA;
+	}
 
   //set adc conversion number
   ADC1->SQR1 |= (uint32_t) (adc->conversionNumber - 1) << ADC_SQR1_L_Pos;
@@ -105,15 +116,17 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
   }
 }
 
-void adc_startDMA(ADC_initStruct* adc, volatile uint32_t* buf, uint8_t size) {
+void adc_startDMA(ADC_initStruct* adc, uint32_t* buf, uint16_t size, enum DMA_MODE mode) {
   dma_init(DMA2);
   DMA_requestStruct request;
+
   request.channel = DMA_CHANNEL_0;
   request.direction = DMA_DIRECTION_PERIPHERAL_TO_MEMORY;
+  request.periphInc = DMA_INC_DISABLE;
   request.memInc = DMA_INC_ENABLE;
   request.periphDataSize = DMA_DATA_SIZE_HALF_WORD;
   request.memoryDataSize = DMA_DATA_SIZE_HALF_WORD;
-  request.mode = DMA_CIRCULAR_MODE;
+  request.mode = mode;
   request.fifoMode = DMA_FIFO_MODE_DISABLED;
 	request.fifoThreshold = 0;
   request.priority = DMA_PRIORITY_LEVEL_HIGH;
@@ -122,11 +135,7 @@ void adc_startDMA(ADC_initStruct* adc, volatile uint32_t* buf, uint8_t size) {
   request.memory0Address = buf;
 
   dma_streamConfig(DMA2_Stream4, &request);
-  ADC1->CR2 |= ADC_CR2_EOCS;
-  ADC1->CR2 |= ADC_CR2_DMA;
-  if(adc->dma) {
-    ADC1->CR2 |= ADC_CR2_DDS;
-  }
+
 	adc_start();
 }
 

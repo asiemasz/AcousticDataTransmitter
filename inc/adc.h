@@ -67,7 +67,6 @@ enum ADC_EXTERNAL_TRIG {
 		ADC_EXTERNAL_TRIG_TIMER1_CC1,
 		ADC_EXTERNAL_TRIG_TIMER1_CC2,
 		ADC_EXTERNAL_TRIG_TIMER1_CC3,
-		ADC_EXTERNAL_TRIG_TIMER2_CC1,
 		ADC_EXTERNAL_TRIG_TIMER2_CC2,
 		ADC_EXTERNAL_TRIG_TIMER2_CC3,
 		ADC_EXTERNAL_TRIG_TIMER2_CC4,
@@ -116,7 +115,7 @@ void adc_configureChannel(ADC_initStruct* adc, ADC_channel* channel, uint8_t ord
 
 void adc_pollForConversion(void);
 
-void adc_startDMA(ADC_initStruct* adc,volatile uint32_t* buf, uint8_t size);
+void adc_startDMA(ADC_initStruct* adc,uint32_t* buf, uint16_t size, enum DMA_MODE mode);
 
 uint16_t adc_getValue(void);
 
