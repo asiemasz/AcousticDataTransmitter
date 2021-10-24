@@ -38,6 +38,10 @@ void timer_start(TIMER_initStruct* init) {
 	init->tim->SR = 0x0;
 }
 
+void timer_stop(TIMER_initStruct* init) {
+	init->tim->CR1 &= ~TIM_CR1_CEN;
+}
+
 void timer_clearITflag(TIMER_initStruct* init) {
 	init->tim->SR = 0x0;
 	while(init->tim->SR);

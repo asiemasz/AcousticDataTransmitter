@@ -63,6 +63,8 @@ void timer_init(TIMER_initStruct* init);
 
 void timer_start(TIMER_initStruct* init);
 
+void timer_stop(TIMER_initStruct* init);
+
 void timer_clearITflag(TIMER_initStruct* init);
 
 void timer_enableIT(TIMER_initStruct* init, uint16_t its);
