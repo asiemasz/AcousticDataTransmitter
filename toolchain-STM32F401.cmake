@@ -1,8 +1,9 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION Cortex-M4-STM32F401)
 
+#Compilers
 set(CMAKE_C_COMPILER arm-none-eabi-gcc)
 set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
 
-SET (CMAKE_C_COMPILER_WORKS 1)
-SET (CMAKE_CXX_COMPILER_WORKS 1)
+#skip checking compiler 
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
