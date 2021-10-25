@@ -59,6 +59,7 @@ dkms.conf
 Objects/
 DebugConfig/
 RTE/
+build/
 
 #else
 .vscode/
