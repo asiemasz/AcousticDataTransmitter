@@ -32,7 +32,7 @@ set(bin_file ${target_name}.bin)
 set(lss_file ${target_name}.lss)
 set(dmp_file ${target_name}.dmp)
 
-set(ARM_OPTIONS -mcpu=cortex-m4 -mfloat-abi=hard --specs=nano.specs -mfpu=fpv4-sp-d16)
+set(ARM_OPTIONS -mcpu=cortex-m4 -mfloat-abi=hard -mthumb --specs=nano.specs -mfpu=fpv4-sp-d16)
 
 add_compile_options(
   ${ARM_OPTIONS}

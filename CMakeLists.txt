@@ -15,8 +15,6 @@ project(AcousticDataTransmitter)
 add_compile_options(
   -Wall
   -Wextra
-  -Wconversion
-  -Wsign-conversion
   -g3
   -Og
 )
@@ -26,9 +24,9 @@ add_compile_definitions(
 )
 
 include_directories(
-  "Drivers/CMSIS/Device/ST/STM32F4xx/Include"
   "Drivers/CMSIS/Include"
   "Drivers/CMSIS/DSP/Include"
+  "Drivers/CMSIS/Device/ST/STM32F4xx/Include"
   "inc"
 )
 
