@@ -1,4 +1,5 @@
-#include "../inc/adc.h"
+#include "adc.h"
+
 
 void adc_init(ADC_initStruct *adc)
 {

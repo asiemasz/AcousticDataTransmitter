@@ -1,9 +1,10 @@
-#include "../inc/gpio.h"
-#include "../inc/i2c.h"
-#include "../inc/timer.h"
-#include "../inc/adc.h"
-#include "../inc/uart.h"
-#include <arm_math.h>
+#include "stm32f401xe.h"
+#include "arm_math.h"
+#include "gpio.h"
+#include "i2c.h"
+#include "timer.h"
+#include "adc.h"
+#include "uart.h"
 
 static ADC_initStruct adc;
 static TIMER_initStruct tim2;
@@ -83,7 +84,7 @@ void DMA2_Stream4_IRQHandler() {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER);
 		if(!dataReady) {
 			for(int i = 0; i < 2048; i++) {
-				buffer_input[i] = buffer[i];
+			//	buffer_input[i] = buffer[i];
 			}
 			dataReady = 0x1;
 			uart_sendString(&uart2, "half\r\n");
@@ -93,7 +94,7 @@ void DMA2_Stream4_IRQHandler() {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
 		if(!dataReady) {
 			for(int i = 2048; i < 4096; i++) {
-				buffer_input[i] = buffer[i];
+				//buffer_input[i] = buffer[i];
 			}
 			dataReady = 0x1;
 			uart_sendString(&uart2, "full\r\n");

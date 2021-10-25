@@ -1,7 +1,8 @@
 #ifndef ADC_H
 #define ADC_H
 
-#include <stm32f401xe.h>
+#include "stm32f401xe.h"
+#include "system_stm32f4xx.h"
 #include <assert.h>
 #include "gpio.h"
 #include "dma.h"
