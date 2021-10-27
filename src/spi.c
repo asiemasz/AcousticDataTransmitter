@@ -1,4 +1,5 @@
 #include "spi.h"
+#include <assert.h>
 
 void spi_init(SPI_initStruct* init) {
     //enable SPI clock

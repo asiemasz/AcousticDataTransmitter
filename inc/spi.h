@@ -2,6 +2,7 @@
 #define SPI_H
 
 #include "stm32f401xe.h"
+#include "gpio.h"
 
 enum SPI_DATA_FRAME_LENGTH {
     SPI_DATA_FRAME_FORMAT_8_BITS,
