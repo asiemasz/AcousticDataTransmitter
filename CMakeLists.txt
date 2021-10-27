@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 set(CMAKE_TOOLCHAIN_FILE STM32F4Toolchain.cmake)
 
 #set C and CPP standards
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
 
 SET(CMAKE_ASM_FLAGS "${CFLAGS} -x assembler-with-cpp")
@@ -15,8 +15,6 @@ project(AcousticDataTransmitter)
 add_compile_options(
   -Wall
   -Wextra
-  -g3
-  -Og
 )
 
 add_compile_definitions(
@@ -58,4 +56,22 @@ file(GLOB ASM_SRCS CMAKE_CONFIGURE_DEPENDS
 
 add_arm_executable(AcousticDataTransmitter ${CPP_SRCS} ${C_SRCS} ${ASM_SRCS})
 
+
+# Print executable size
+add_custom_command(TARGET AcousticDataTransmitter
+        POST_BUILD
+        COMMAND arm-none-eabi-size ${elf_file})
+
 set(LINKER_SCRIPT "STM32F401RETx_FLASH.ld")
+
+find_program(OPENOCD_EXECUTABLE "openocd" PATHS DOC "OpenOCD debugger and flash utility")
+
+get_filename_component(OPENOCD_CONFIG openocd.cfg ABSOLUTE)
+
+add_custom_target(flash COMMAND ${OPENOCD_EXECUTABLE}
+ -f ${OPENOCD_CONFIG}
+ --command "program ${elf_file} reset exit")
+
+ add_custom_target(reset COMMAND ${OPENOCD_EXECUTABLE}
+ -f ${OPENOCD_CONFIG}
+ --command "init" --command "reset" --command "exit")

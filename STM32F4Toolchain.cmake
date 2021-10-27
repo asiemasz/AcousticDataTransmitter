@@ -42,6 +42,9 @@ add_compile_options(
   -fdata-sections
   -MMD
   -MP
+  -gdwarf-2
+  -g3
+  -Og
 )
 
 add_link_options(
@@ -53,6 +56,7 @@ add_link_options(
   -T../STM32F401RETx_FLASH.ld
   LINKER:--gc-sections
   LINKER:--build-id
+  LINKER:--print-memory-usage
 )
 
 add_executable(${elf_file} ${ARGN})
