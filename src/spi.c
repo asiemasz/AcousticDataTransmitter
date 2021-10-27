@@ -9,6 +9,8 @@ void spi_init(SPI_initStruct* init) {
         RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;
     } else if(init->spi == SPI3) {
         RCC->APB1ENR |= RCC_APB1ENR_SPI3EN;
+    } else if(init->spi == SPI4) {
+        RCC->APB2ENR |= RCC_APB2ENR_SPI4EN;
     }
     else {
         assert(0);
@@ -32,7 +34,7 @@ void spi_init(SPI_initStruct* init) {
     //select Slave Management mode
     init->spi->CR1 |= init->slaveSelectMode << SPI_CR1_SSM_Pos;
     
-    if(!(init->slaveSelectMode)) {
+    if(init->slaveSelectMode) {
         init->spi->CR1 |= SPI_CR1_SSI;
     }
 
