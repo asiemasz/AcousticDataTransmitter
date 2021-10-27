@@ -55,6 +55,15 @@ enum SPI_SLAVE_SELECT_MODE {
     SPI_HARDWARE_NSS_MANAGEMENT
 };
 
+typedef struct SPI_pinout{
+    GPIO_TypeDef*   MOSI_Port;
+    enum GPIO_PIN   MOSI_Pin;
+    GPIO_TypeDef*   MISO_Port;
+    enum GPIO_PIN   MISO_Pin;
+    GPIO_TypeDef*   SS_Port; //Slave Select 
+    enum GPIO_PIN   SS_Pin; 
+} SPI_pinout; //For full duplex (for half duplex either mosi or miso pin can be selected - the one that's not empty by default)
+
 typedef struct SPI_initStruct {
     SPI_TypeDef*                     spi;
     enum SPI_MODE                    mode;
@@ -65,6 +74,7 @@ typedef struct SPI_initStruct {
     enum SPI_MASTER_CLOCK_PRESCALLER clkPrescaller;
     enum SPI_CLOCK_MODE              clockMode;
     enum SPI_SLAVE_SELECT_MODE       slaveSelectMode;
+    SPI_pinout                       pinout;
 } SPI_initStruct;
 
 #endif
