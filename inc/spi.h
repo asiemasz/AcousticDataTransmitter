@@ -13,14 +13,15 @@ enum SPI_DATA_FRAME_ORDER {
     SPI_DATA_FRAME_FORMAT_LSB_FIRST
 };
 
+//Not supported yet
 enum SPI_FRAME_FORMAT {
     SPI_FRAME_FORMAT_MOTOROLA_MODE,
     SPI_FRAME_FORMAT_TI_MODE
 };
 
 enum SPI_MODE {
-    SPI_MODE_MASTER,
-    SPI_MODE_SLAVE
+    SPI_MODE_SLAVE,
+    SPI_MODE_MASTER
 };
 
 enum SPI_HALF_DUPLEX {
@@ -76,5 +77,7 @@ typedef struct SPI_initStruct {
     enum SPI_SLAVE_SELECT_MODE       slaveSelectMode;
     SPI_pinout                       pinout;
 } SPI_initStruct;
+
+void spi_init(SPI_initStruct* init);
 
 #endif
