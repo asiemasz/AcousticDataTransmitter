@@ -1,0 +1,3 @@
+[submodule "MCP48822"]
+	path = MCP48822
+	url = https://github.com/asiemasz/MCP48822.git
