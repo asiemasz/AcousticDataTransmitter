@@ -3,6 +3,9 @@
 
 #include "stm32f401xe.h"
 #include "gpio.h"
+#include <stdint.h>
+
+#define SPI_BUSY(SPI) (!(SPI->SR & (SPI_SR_TXE | SPI_SR_RXNE)) || SPI->SR & SPI_SR_BSY)
 
 enum SPI_DATA_FRAME_LENGTH {
     SPI_DATA_FRAME_LENGTH_8_BITS,
@@ -58,12 +61,13 @@ enum SPI_SLAVE_SELECT_MODE {
 };
 
 typedef struct SPI_pinout{
+    GPIO_TypeDef*   CLK_Port;
+    enum GPIO_PIN   CLK_Pin;
     GPIO_TypeDef*   MOSI_Port;
     enum GPIO_PIN   MOSI_Pin;
     GPIO_TypeDef*   MISO_Port;
     enum GPIO_PIN   MISO_Pin;
-    GPIO_TypeDef*   SS_Port; //Slave Select 
-    enum GPIO_PIN   SS_Pin; 
+    enum GPIO_ALTERNATE_FUNCTION af;
 } SPI_pinout; //For full duplex (for half duplex either mosi or miso pin can be selected - the one that's not empty by default)
 
 typedef struct SPI_initStruct {
@@ -80,5 +84,11 @@ typedef struct SPI_initStruct {
 } SPI_initStruct;
 
 void spi_init(SPI_initStruct* init);
+
+void spi_write(SPI_initStruct *init, uint8_t* data, uint16_t size);
+
+void spi_read(SPI_initStruct *init, uint8_t* data, uint16_t size);
+
+void spi_transmitReceive(SPI_initStruct* init, uint8_t* dataOut, uint8_t* dataIn, uint16_t size);
 
 #endif
