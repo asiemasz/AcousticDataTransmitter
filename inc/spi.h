@@ -89,6 +89,12 @@ void spi_write(SPI_initStruct *init, uint8_t* data, uint16_t size);
 
 void spi_read(SPI_initStruct *init, uint8_t* data, uint16_t size);
 
+void spi_write_16bit(SPI_initStruct *init, uint16_t* data, uint16_t size);
+
+void spi_read_16bit(SPI_initStruct *init, uint16_t* data, uint16_t size);
+
 void spi_transmitReceive(SPI_initStruct* init, uint8_t* dataOut, uint8_t* dataIn, uint16_t size);
+
+void spi_transmitReceive_16bit(SPI_initStruct* init, uint16_t* dataOut, uint16_t* dataIn, uint16_t size);
 
 #endif

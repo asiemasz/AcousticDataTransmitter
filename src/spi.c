@@ -109,3 +109,36 @@ void spi_transmitReceive(SPI_initStruct* init, uint8_t* dataOut, uint8_t* dataIn
         dataIn[i] = init->spi->DR;
     }
 }
+
+void spi_write_16bit(SPI_initStruct *init, uint16_t *data, uint16_t size) {
+    while(SPI_BUSY(init->spi)); //wait for TXE bit to be set (buffer empty)
+
+    uint16_t i;
+    for (i = 0; i < size; i++) {
+        init->spi->DR = data[i];
+        while(SPI_BUSY(init->spi)); //wait for TXE bit to be set (buffer empty)
+        (void) init->spi->DR;
+    }
+}
+
+void spi_read_16bit(SPI_initStruct *init, uint16_t* data, uint16_t size) {
+    uint16_t i;
+        while(SPI_BUSY(init->spi)); //wait for TXE bit to be set (buffer empty)
+
+    for(i = 0; i < size; i++) {
+        init->spi->DR = 0xFF; //Dummy fill
+        while(SPI_BUSY(init->spi)); //wait for TXE bit to be set (buffer empty)
+        data[i] = init->spi->DR;
+    }
+}
+
+void spi_transmitReceive_16bit(SPI_initStruct* init, uint16_t* dataOut, uint16_t* dataIn, uint16_t size) {
+    uint16_t i;
+    while(SPI_BUSY(init->spi)); //wait for TXE bit to be set (buffer empty)
+
+    for(i = 0; i < size; i++) {
+        init->spi->DR = dataOut[i];
+        while(SPI_BUSY(init->spi)); //wait for TXE bit to be set (buffer empty)
+        dataIn[i] = init->spi->DR;
+    }
+}
