@@ -1,3 +1,4 @@
 [submodule "MCP4822"]
 	path = MCP4822
 	url = https://github.com/asiemasz/MCP4822.git
+	branch = main
