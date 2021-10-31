@@ -44,7 +44,7 @@ void timer_stop(TIMER_initStruct* init) {
 
 void timer_clearITflag(TIMER_initStruct* init) {
 	init->tim->SR = 0x0;
-	while(init->tim->SR);
+	//while(init->tim->SR);
 }
 
 void timer_enableIT(TIMER_initStruct* init, uint16_t its) {
@@ -64,7 +64,7 @@ uint32_t timer_getCounterVal(TIMER_initStruct* init) {
 }
 
 uint8_t timer_getITFlag(TIMER_initStruct* init, enum TIMER_IT_FLAG flag) {
-		return ((init->tim->SR & (1U << flag)) > 0);
+	return ((init->tim->SR & (1U << flag)) > 0);
 }
 
 
