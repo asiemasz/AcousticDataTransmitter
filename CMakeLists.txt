@@ -49,6 +49,7 @@ file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
   "Drivers/CMSIS/DSP/Source/SupportFunctions/*.c"  
   "Drivers/CMSIS/DSP/Source/TransformFunctions/*.c"  
   "MCP4822/*.c"
+  "main.c"
 )
 
 file(GLOB ASM_SRCS CMAKE_CONFIGURE_DEPENDS
