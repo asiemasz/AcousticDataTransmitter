@@ -43,7 +43,7 @@ int main() {
 	
 	tim2.tim = TIM2;
 	tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
-	tim2.prescaler = 1;
+	tim2.prescaler = 2;
 	tim2.autoReload = 2100;
 
 	timer_init(&tim2);
@@ -54,7 +54,7 @@ int main() {
 	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_144CYCL); //max. sampling time for 400 kHz sampling rate
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
-	adc_startDMA(&adc, (uint32_t *)buffer,(uint16_t) 4096, DMA_CIRCULAR_MODE);
+	adc_startDMA(&adc, (uint32_t *)buffer,(uint16_t) 4096, DMA_DIRECT_MODE);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
@@ -72,7 +72,7 @@ int main() {
 				//sprintf(buf, "%.4f \r\n", buffer_output_mag[i]);
 				//uart_sendString(&uart2, buf);
 			}	
-			uart_sendString(&uart2, "fft ready\r\n");
+			//uart_sendString(&uart2, "fft ready\r\n");
 			dataReady = 0;
 		}
 	}
@@ -85,9 +85,12 @@ void DMA2_Stream4_IRQHandler() {
 		if(!dataReady) {
 			for(int i = 0; i < 2048; i++) {
 			//	buffer_input[i] = buffer[i];
+			char buf[20];
+			sprintf(buf, "%d \r\n", buffer[i]);
+			uart_sendString(&uart2, buf);
 			}
 			dataReady = 0x1;
-			uart_sendString(&uart2, "half\r\n");
+			//uart_sendString(&uart2, "half\r\n");
 		}
 	}
 	else if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
@@ -95,9 +98,12 @@ void DMA2_Stream4_IRQHandler() {
 		if(!dataReady) {
 			for(int i = 2048; i < 4096; i++) {
 				//buffer_input[i] = buffer[i];
-			}
-			dataReady = 0x1;
-			uart_sendString(&uart2, "full\r\n");
+				char buf[20];
+				sprintf(buf, "%d \r\n", buffer[i]);
+				uart_sendString(&uart2, buf);
+				}
+				dataReady = 0x1;
+			//uart_sendString(&uart2, "full\r\n");
 		}
 	}
 }
