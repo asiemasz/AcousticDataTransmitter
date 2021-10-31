@@ -26,6 +26,7 @@ include_directories(
   "Drivers/CMSIS/DSP/Include"
   "Drivers/CMSIS/Device/ST/STM32F4xx/Include"
   "inc"
+  "MCP4822"
 )
 
 add_compile_definitions(
@@ -47,7 +48,7 @@ file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
   "Drivers/CMSIS/DSP/Source/StatisticsFunctions/*.c"  
   "Drivers/CMSIS/DSP/Source/SupportFunctions/*.c"  
   "Drivers/CMSIS/DSP/Source/TransformFunctions/*.c"  
-
+  "MCP4822/*.c"
 )
 
 file(GLOB ASM_SRCS CMAKE_CONFIGURE_DEPENDS
