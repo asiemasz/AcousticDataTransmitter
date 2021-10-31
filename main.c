@@ -43,7 +43,7 @@ int main() {
 	
 	tim2.tim = TIM2;
 	tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
-	tim2.prescaler = 2;
+	tim2.prescaler = 1;
 	tim2.autoReload = 2100;
 
 	timer_init(&tim2);
