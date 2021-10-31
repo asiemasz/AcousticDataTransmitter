@@ -75,7 +75,7 @@ int main()
 	tim2.tim = TIM2;
 	tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
 	tim2.prescaler = 1;
-	tim2.autoReload = 233;
+	tim2.autoReload = 2330;
 
 	spi_init(&spi1);
 	timer_init(&tim2);
