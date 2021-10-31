@@ -27,19 +27,18 @@ void MCP4822_CSdis(const uint32_t *GPIO_port, const uint8_t GPIO_pin)
 
 MCP4822_device MCP4822 = {
 	.SS_pin = PIN3,
-	.SS_Port = GPIOA,
+	.SS_Port = GPIOC,
 	.writeFunction = MCP4822_write,
 	.CSenableFunction = MCP4822_CSen,
 	.CSdisableFunction = MCP4822_CSdis};
 
 MCP4822_OUTPUT_CONFIG cfg = {
 	.gain = MCP4822_OUTPUT_GAIN_x1,
-	.output = MCP4822_DAC_A,
-	.powerDown = MCP4822_OUTPUT_POWERDOWN_CONTROL_BIT,
+	.output = MCP4822_DAC_B,
+	.powerDown = 1,
 };
 
-const uint16_t sine[20] = {2048, 2712, 3305, 3762, 4032, 4088, 3923, 3554, 3022, 2385,
-						   1710, 1073, 541, 172, 7, 63, 333, 790, 1383, 2047};
+const uint16_t sine[20] = {0x7e9,0xa5b,0xc8f,0xe4f,0xf6f,0xfd2,0xf6f,0xe4f,0xc8f,0xa5b,0x7e9,0x577,0x343,0x183,0x63,0x0,0x63,0x183,0x343,0x577};
 volatile uint8_t i = 0;
 
 int main()
@@ -51,7 +50,6 @@ int main()
 		.mode = GPIO_MODE_OUTPUT,
 		.outSpeed = GPIO_OUT_SPEED_VERY_HIGH,
 	};
-	gpio_setPinConfiguration(GPIOA, PIN3, &pin3);
 	gpio_setPinConfiguration(GPIOC, PIN3, &pin3);
 
 	SPI_pinout spi1_pins = {
@@ -64,7 +62,7 @@ int main()
 		.MOSI_Port = GPIOA,
 	};
 
-	spi1.clkPrescaller = SPI_MASTER_CLOCK_PRESCALLER_4;
+	spi1.clkPrescaller = SPI_MASTER_CLOCK_PRESCALLER_8;
 	spi1.clockMode = SPI_CLOCK_MODE_POLARITY_0_PHASE_0;
 	spi1.mode = SPI_MODE_MASTER;
 	spi1.slaveSelectMode = SPI_SOFTWARE_NSS_MANAGEMENT;
@@ -74,7 +72,7 @@ int main()
 
 	tim2.tim = TIM2;
 	tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
-	tim2.prescaler = 1;
+	tim2.prescaler = 10;
 	tim2.autoReload = 2330;
 
 	spi_init(&spi1);
@@ -84,6 +82,7 @@ int main()
 	NVIC_EnableIRQ(TIM2_IRQn);
 
 	timer_start(&tim2);
+	//MCP4822_setVoltage(&MCP4822, 1.3f, &cfg);
 
 	while (1)
 	{
@@ -94,7 +93,7 @@ void TIM2_IRQHandler()
 {
 	timer_clearITflag(&tim2);
 	MCP4822_setValue(&MCP4822, sine[i++], &cfg);
-	if(i == 20) {
+	if(i == 19) {
 		i = 0;
 	}
 }
