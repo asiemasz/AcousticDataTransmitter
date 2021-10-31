@@ -38,7 +38,7 @@ MCP4822_OUTPUT_CONFIG cfg = {
 	.powerDown = 1,
 };
 
-const uint16_t sine[20] = {0x7e9,0xa5b,0xc8f,0xe4f,0xf6f,0xfd2,0xf6f,0xe4f,0xc8f,0xa5b,0x7e9,0x577,0x343,0x183,0x63,0x0,0x63,0x183,0x343,0x577};
+const uint16_t sine[10] = {0x7fd,0xa75,0xcaf,0xe73,0xf96,0xffa,0xf96,0xe73,0xcaf,0xa75,0x7fd,0x585,0x34b,0x187,0x64,0x0,0x64,0x187,0x34b,0x585};
 volatile uint8_t i = 0;
 
 int main()
@@ -72,8 +72,8 @@ int main()
 
 	tim2.tim = TIM2;
 	tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
-	tim2.prescaler = 10;
-	tim2.autoReload = 2330;
+	tim2.prescaler = 1;
+	tim2.autoReload = 210;
 
 	spi_init(&spi1);
 	timer_init(&tim2);
@@ -93,7 +93,7 @@ void TIM2_IRQHandler()
 {
 	timer_clearITflag(&tim2);
 	MCP4822_setValue(&MCP4822, sine[i++], &cfg);
-	if(i == 19) {
+	if(i == 20) {
 		i = 0;
 	}
 }
