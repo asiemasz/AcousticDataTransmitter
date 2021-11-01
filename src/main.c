@@ -35,7 +35,7 @@ MCP4822_device MCP4822 = {
 MCP4822_OUTPUT_CONFIG cfg = {
 	.gain = MCP4822_OUTPUT_GAIN_x2,
 	.output = MCP4822_DAC_B,
-	.powerDown = 1,
+	.powerDown = MCP4822_OUTPUT_POWERDOWN_CONTROL_BIT,
 };
 
 //const uint16_t sine[20] = {0x7fd,0xa75,0xcaf,0xe73,0xf96,0xffa,0xf96,0xe73,0xcaf,0xa75,0x7fd,0x585,0x34b,0x187,0x64,0x0,0x64,0x187,0x34b,0x585};
@@ -44,6 +44,7 @@ MCP4822_OUTPUT_CONFIG cfg = {
 const uint16_t sine[18] = {0x7d0,0xa7c,0xcd6,0xe94,0xf82,0xf82,0xe94,0xcd6,0xa7c,0x7d0,0x524,0x2ca,0x10c,0x1e,0x1e,0x10c,0x2ca,0x524}; 
 
 volatile uint8_t i = 0;
+volatile uint8_t dataReady = 0;
 
 int main()
 {
@@ -77,7 +78,7 @@ int main()
 	tim2.tim = TIM2;
 	tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
 	tim2.prescaler = 1;
-	tim2.autoReload = 259;
+	tim2.autoReload = 233;
 
 	spi_init(&spi1);
 	timer_init(&tim2);
@@ -90,22 +91,17 @@ int main()
 
 	while (1)
 	{
+		if(dataReady) {
+			MCP4822_setValue(&MCP4822, sine[i], &cfg); 
+			dataReady = 0;
+		}
 	}
 }
 
 void TIM2_IRQHandler()
 {
-	//timer_clearITflag(&tim2);
-	//MCP4822_setValue(&MCP4822, sine[i], &cfg); 
-	//For faster performance callbacks' not used.
-	TIM2->SR = 0x0;
-	GPIOC->BSRR |= (1 << 0x13);
-	SPI1->DR = (0x9 << 4U) | (sine[i] >> 8);
-	while(SPI_BUSY(SPI1));
-	SPI1->DR = sine[i] & 0xFF;
-	while(SPI_BUSY(SPI1));
-	GPIOC->BSRR |= (1 << 0x3);
-
+	TIM2->SR = 0;	//For faster performance callbacks' not used.
+	dataReady = 1;
 	if(++i == 18) {
 		i = 0;
 	}
