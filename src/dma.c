@@ -70,6 +70,10 @@ void dma_streamITEnable(DMA_Stream_TypeDef* stream, uint8_t its) {
 	stream->CR |= its;
 }
 
+void dma_streamITDisable(DMA_Stream_TypeDef* stream, uint8_t its) {
+	stream->CR &= ~its;
+}
+
 void dma_streamClearITFlag(DMA_TypeDef* dma, uint8_t stream, enum DMA_IT_FLAG flag) {
 	assert(stream >= 0 && stream < 8);
 	if(stream < 4) {

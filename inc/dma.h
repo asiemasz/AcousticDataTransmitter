@@ -101,6 +101,8 @@ void dma_streamConfig(DMA_Stream_TypeDef* stream, DMA_requestStruct* request);
 
 void dma_streamITEnable(DMA_Stream_TypeDef* stream, uint8_t its);
 
+void dma_streamITDisable(DMA_Stream_TypeDef* stream, uint8_t its);
+
 void dma_streamClearITFlag(DMA_TypeDef* dma, uint8_t stream, enum DMA_IT_FLAG flag);
 
 uint8_t dma_streamGetITFlag(DMA_TypeDef* dma, uint8_t stream, enum DMA_IT_FLAG flag);
