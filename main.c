@@ -17,7 +17,7 @@ static uint16_t numBlocks = 2048/BLOCK_SIZE;
 const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {-0.001238f, -0.002175f, -0.000845f, 0.003789f, 0.007679f, 0.002303f, -0.013385f,
  -0.022869f, -0.004360f, 0.038050f, 0.059609f, 0.006119f, -0.128249f, -0.275917f, 0.660179f, -0.275917f, -0.128249f, 
  0.006119f, 0.059609f, 0.038050f, -0.004360f, -0.022869f, -0.013385f, 0.002303f, 0.007679f, 0.003789f, -0.000845f,
-  -0.002175f, -0.001238f};
+  -0.002175f, -0.001238f}; //highpass filter coeffs (15kHz +)
 
 static ADC_initStruct adc;
 static TIMER_initStruct tim2;
@@ -83,11 +83,11 @@ int main() {
 	while(1) {
 		if(dataReady) {
 			for (uint32_t i = 0; i < numBlocks; i++) {
-				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE);
+				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			arm_rfft_f32(&S, buffer_filtered, buffer_output); //DFT
+			arm_rfft_f32(&S, buffer_filtered, buffer_output); //calculate DFT
 			arm_cmplx_mag_f32(buffer_output, buffer_output_mag, 2048); //DFT modulus
-			arm_max_f32(buffer_output_mag, 1024, &maxValue, &maxValueIndex);//find main peak
+			arm_max_f32(buffer_output_mag, 1024, &maxValue, &maxValueIndex);//find main peak within 0-(Fs/2) freq. range
 			sprintf(buf, "Detected frequency: %.4f \r\n", maxValueIndex*44100.0f/2048.0f);
 			uart_sendString(&uart2, buf);
 			dataReady = 0;
