@@ -104,5 +104,6 @@ void TIM2_IRQHandler()
 	dataReady = 1;
 	if(++i == 20) {
 		i = 0;
+		TIM2->ARR = 221;
 	}
 }
