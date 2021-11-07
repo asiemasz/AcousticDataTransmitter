@@ -77,4 +77,6 @@ void timer_selectTRGOUTEvent(TIMER_initStruct* init, enum TIMER_TRGOUT_EVENT eve
 
 uint32_t timer_getCounterVal(TIMER_initStruct* init);
 
+void timer_setReloadVal(TIMER_initStruct* init, uint32_t reload);
+
 #endif

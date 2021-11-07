@@ -67,4 +67,9 @@ uint8_t timer_getITFlag(TIMER_initStruct* init, enum TIMER_IT_FLAG flag) {
 	return ((init->tim->SR & (1U << flag)) > 0);
 }
 
+void timer_setReloadVal(TIMER_initStruct* init, uint32_t reload) {
+    timer_stop(init);
+    init->tim->ARR = reload;
+    timer_start(init);
+}
 
