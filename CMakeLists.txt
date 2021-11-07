@@ -54,6 +54,7 @@ file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
 
 file(GLOB ASM_SRCS CMAKE_CONFIGURE_DEPENDS
   "startup/*.s"
+  "Drivers/CMSIS/DSP/Source/TransformFunctions/*.s"
 )
 
 add_arm_executable(AcousticDataTransmitter ${CPP_SRCS} ${C_SRCS} ${ASM_SRCS})
