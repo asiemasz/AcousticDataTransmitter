@@ -6,7 +6,7 @@
 #include "adc.h"
 #include "uart.h"
 
-#define SAMPLES 2048
+#define SAMPLES 256 //Supported FFT Lengths are 32, 64, 128, 256, 512, 1024, 2048, 4096.
 
 //Filter
 #define BLOCK_SIZE 32
@@ -35,7 +35,6 @@ static volatile uint8_t dataReady;
 
 //FFT 
 static arm_rfft_fast_instance_f32 S; 
-static arm_cfft_radix4_instance_f32 S_CFFT;
 
 int main() {		
 	//Peripherals initialization
@@ -64,7 +63,7 @@ int main() {
 	tim2.tim = TIM2;
 	tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
 	tim2.prescaler = 1;
-	tim2.autoReload = 1905;
+	tim2.autoReload = 1750;
 
 	timer_init(&tim2);
 	timer_selectTRGOUTEvent(&tim2, TIMER_TRGOUT_EVENT_UPDATE);
@@ -78,8 +77,7 @@ int main() {
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
-
-	arm_rfft_init_f32(&S, &S_CFFT, SAMPLES, 0, 1);
+	arm_rfft_fast_init_f32(&S, SAMPLES);
 	arm_fir_init_f32(&S_f, NUM_TAPS, firCoeffs32, firStateF32, SAMPLES);
 
 	timer_start(&tim2);	
@@ -89,10 +87,10 @@ int main() {
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			arm_rfft_f32(&S, buffer_filtered, buffer_output); //calculate DFT
+			arm_rfft_fast_f32(&S, buffer_filtered, buffer_output, 0); //calculate DFT
 			arm_cmplx_mag_f32(buffer_output, buffer_output_mag, SAMPLES); //DFT modulus
 			arm_max_f32(buffer_output_mag, SAMPLES/2, &maxValue, &maxValueIndex);//find main peak within 0-(Fs/2) freq. range
-			sprintf(buf, "Detected frequency: %.4f \r\n", maxValueIndex*44100.0f/SAMPLES);
+			sprintf(buf, "Detected frequency: %.4f \r\n", maxValueIndex*48000.0f/SAMPLES);
 			uart_sendString(&uart2, buf);
 			dataReady = 0;
 		}
