@@ -43,7 +43,7 @@ const TIMER_initStruct tim2 = { //sampling frequency
 
 TIMER_initStruct tim3 = { // symbol change frequency
 	.direction = TIMER_COUNTER_DIRECTION_DOWN,
-	.prescaler = 100,
+	.prescaler = 1000,
 	.autoReload = FSystem/1000,
 	.tim = TIM3
 };
@@ -62,6 +62,7 @@ void MCP4822_CSdis(const uint32_t *GPIO_port, const uint8_t GPIO_pin)
 {
 	gpio_setPin(GPIO_port, GPIO_pin);
 }
+static UART_initStruct uart2;
 
 MCP4822_device MCP4822 = {
 	.SS_pin = PIN3,
@@ -77,16 +78,17 @@ MCP4822_OUTPUT_CONFIG cfg = {
 };
 
 uint16_t freq1 = 20000;
-uint16_t freq2 = 20000;
+uint16_t freq2 = 19000;
 volatile uint8_t dataReady = 0;
 uint16_t val;
 volatile float32_t y;
-
+uint16_t sine[10000];
 
 volatile uint64_t i = 0;
-volatile uint8_t j = 0;
+volatile uint32_t j = 0;
 volatile uint16_t x;
 float32_t fn1;
+float32_t fn2;
 
 int main()
 {
@@ -99,6 +101,16 @@ int main()
 	};
 	gpio_setPinConfiguration(GPIOC, PIN3, &pin3);
 
+
+	uart2.baudRate = 115200;
+	uart2.mode = UART_TRANSMITTER_ONLY;
+	uart2.oversampling = UART_OVERSAMPLING_BY_16;
+	uart2.parityControl = UART_PARITY_CONTROL_DISABLED;
+	uart2.stopBits = UART_STOP_BITS_1;
+	uart2.wordLength = UART_WORD_LENGTH_8;
+	uart2.uart = USART2;
+		
+	uart_init(&uart2);
 	spi_init(&spi1);
 	timer_init(&tim2);
 	timer_init(&tim3);
@@ -111,14 +123,16 @@ int main()
 
 	timer_start(&tim3);
 	fn1 = (float32_t)freq1/FS;
+	fn2 = (float32_t)freq2/FS;
 	timer_start(&tim2);
 
 	while (1)
 	{
 		if (dataReady)
 		{
-			y = ((arm_sin_f32(fn1*i*2*PI) + 1)/2);
+			y = (((arm_sin_f32(fn1*i*2*PI) + 1)/2) + ((arm_sin_f32(fn2*i*2*PI) + 1)/2)) / 2;
 			val = y*4000.0f;
+			sine[j++] = val;
 			MCP4822_setValue(&MCP4822, val, &cfg);
 			dataReady = 0;
 		}
