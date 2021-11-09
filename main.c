@@ -8,8 +8,8 @@
 #include "MCP4822.h"
 
 #define SAMPLES 20
-#define SYMBOLS 18
-#define FS 48000
+#define SYMBOLS 2
+#define FS 96000
 #define FSystem 84000000
 
 extern uint32_t SystemCoreClock;
@@ -43,7 +43,7 @@ const TIMER_initStruct tim2 = { //sampling frequency
 
 TIMER_initStruct tim3 = { // symbol change frequency
 	.direction = TIMER_COUNTER_DIRECTION_DOWN,
-	.prescaler = 1000,
+	.prescaler = 10,
 	.autoReload = FSystem/1000,
 	.tim = TIM3
 };
@@ -76,22 +76,16 @@ MCP4822_OUTPUT_CONFIG cfg = {
 	.powerDown = MCP4822_OUTPUT_POWERDOWN_CONTROL_BIT,
 };
 
-const uint16_t sine[SAMPLES] = {0x7fd, 0xa75, 0xcaf, 0xe73, 0xf96, 0xffa, 0xf96, 0xe73, 0xcaf, 0xa75, 0x7fd, 0x585, 0x34b, 0x187, 0x64, 0x0, 0x64, 0x187, 0x34b, 0x585};
+uint16_t freq1 = 18000;
+uint16_t freq2 = 20000;
+volatile uint8_t dataReady = 0;
 
 
 volatile uint8_t i = 0;
 volatile uint8_t j = 0;
-uint16_t reload[SYMBOLS];
-
-volatile uint8_t dataReady = 0;
 
 int main()
 {
-	//fill reload array
-	for (uint8_t i = 0; i < SYMBOLS; i++) {
-		reload[i] = 84000000/SAMPLES/(17000 + i*3000/SYMBOLS);
-	}
-
 	gpio_init(GPIOA);
 	gpio_init(GPIOC);
 
@@ -113,12 +107,18 @@ int main()
 
 	timer_start(&tim2);
 	timer_start(&tim3);
+	volatile float32_t y, x;
+	uint16_t val;
+	float32_t fn1 = (float32_t)freq1/FS;
+	float32_t fn2 = (float32_t)freq2/FS;
 
 	while (1)
 	{
 		if (dataReady)
 		{
-			MCP4822_setValue(&MCP4822, sine[i], &cfg);
+			y = (((arm_sin_f32(2.0f*PI*fn1*i) + 1) / 2) + ((arm_sin_f32(2.0f*PI*fn2*i) + 1) / 2))/2;
+			val = y*4000;
+			MCP4822_setValue(&MCP4822, val, &cfg);
 			dataReady = 0;
 		}
 	}
@@ -127,17 +127,16 @@ int main()
 void TIM2_IRQHandler()
 {
 	timer_clearITflag(&tim2);
-	dataReady = 1;
-	if (++i == SAMPLES)
-	{
+	if(i++ == 50) {
 		i = 0;
 	}
+	dataReady = 1;
 }
 
 void TIM3_IRQHandler()
 {
 	timer_clearITflag(&tim3);
-	timer_setReloadVal(&tim2, reload[j]);
+	//timer_setReloadVal(&tim2, reload[j]);
 	if (++j == SYMBOLS)
 	{
 		j = 0;
