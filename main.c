@@ -9,7 +9,7 @@
 
 #define SAMPLES 20
 #define SYMBOLS 2
-#define FS 96000
+#define FS 48000
 #define FSystem 84000000
 
 extern uint32_t SystemCoreClock;
@@ -43,7 +43,7 @@ const TIMER_initStruct tim2 = { //sampling frequency
 
 TIMER_initStruct tim3 = { // symbol change frequency
 	.direction = TIMER_COUNTER_DIRECTION_DOWN,
-	.prescaler = 10,
+	.prescaler = 100,
 	.autoReload = FSystem/1000,
 	.tim = TIM3
 };
@@ -76,13 +76,17 @@ MCP4822_OUTPUT_CONFIG cfg = {
 	.powerDown = MCP4822_OUTPUT_POWERDOWN_CONTROL_BIT,
 };
 
-uint16_t freq1 = 18000;
+uint16_t freq1 = 20000;
 uint16_t freq2 = 20000;
 volatile uint8_t dataReady = 0;
+uint16_t val;
+volatile float32_t y;
 
 
-volatile uint8_t i = 0;
+volatile uint64_t i = 0;
 volatile uint8_t j = 0;
+volatile uint16_t x;
+float32_t fn1;
 
 int main()
 {
@@ -105,19 +109,16 @@ int main()
 	NVIC_EnableIRQ(TIM2_IRQn);
 	NVIC_EnableIRQ(TIM3_IRQn);
 
-	timer_start(&tim2);
 	timer_start(&tim3);
-	volatile float32_t y, x;
-	uint16_t val;
-	float32_t fn1 = (float32_t)freq1/FS;
-	float32_t fn2 = (float32_t)freq2/FS;
+	fn1 = (float32_t)freq1/FS;
+	timer_start(&tim2);
 
 	while (1)
 	{
 		if (dataReady)
 		{
-			y = (((arm_sin_f32(2.0f*PI*fn1*i) + 1) / 2) + ((arm_sin_f32(2.0f*PI*fn2*i) + 1) / 2))/2;
-			val = y*4000;
+			y = ((arm_sin_f32(fn1*i*2*PI) + 1)/2);
+			val = y*4000.0f;
 			MCP4822_setValue(&MCP4822, val, &cfg);
 			dataReady = 0;
 		}
@@ -127,9 +128,8 @@ int main()
 void TIM2_IRQHandler()
 {
 	timer_clearITflag(&tim2);
-	if(i++ == 50) {
-		i = 0;
-	}
+	++i;
+
 	dataReady = 1;
 }
 
@@ -137,8 +137,5 @@ void TIM3_IRQHandler()
 {
 	timer_clearITflag(&tim3);
 	//timer_setReloadVal(&tim2, reload[j]);
-	if (++j == SYMBOLS)
-	{
-		j = 0;
-	}
+	i = 0;
 }
