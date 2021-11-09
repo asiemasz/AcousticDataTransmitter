@@ -9,6 +9,10 @@
 
 #define SAMPLES 20
 #define SYMBOLS 18
+#define FS 48000
+#define FSystem 84000000
+
+extern uint32_t SystemCoreClock;
 
 const SPI_pinout spi1_pins = {
 	.af = GPIO_AF5,
@@ -30,16 +34,17 @@ const SPI_initStruct spi1 = {
 	.spi = SPI1,
 };
 
-const TIMER_initStruct tim2 = {
+const TIMER_initStruct tim2 = { //sampling frequency
 	.tim = TIM2,
 	.direction = TIMER_COUNTER_DIRECTION_DOWN,
 	.prescaler = 1,
-	.autoReload = 1750,
-};						  // DAC handling
-TIMER_initStruct tim3 = { // changing frequency (TIMER2 reload value register)
+	.autoReload = FSystem / FS,
+};
+
+TIMER_initStruct tim3 = { // symbol change frequency
 	.direction = TIMER_COUNTER_DIRECTION_DOWN,
 	.prescaler = 1000,
-	.autoReload = 8400,
+	.autoReload = FSystem/1000,
 	.tim = TIM3
 };
 
@@ -72,9 +77,7 @@ MCP4822_OUTPUT_CONFIG cfg = {
 };
 
 const uint16_t sine[SAMPLES] = {0x7fd, 0xa75, 0xcaf, 0xe73, 0xf96, 0xffa, 0xf96, 0xe73, 0xcaf, 0xa75, 0x7fd, 0x585, 0x34b, 0x187, 0x64, 0x0, 0x64, 0x187, 0x34b, 0x585};
-// const uint16_t sine[10] = {0x7fd,0xcaf,0xf96,0xf96,0xcaf,0x7fd,0x34b,0x64,0x64,0x34b};
-// const uint16_t sine[15] = {0x7fd,0xb3d,0xded,0xf96,0xfef,0xee8,0xcaf,0x9a6,0x654,0x34b, 0x112,0xb,0x64,0x20d,0x4bd,0x7fd};
-// const uint16_t sine[18] = {0x7d0,0xa7c,0xcd6,0xe94,0xf82,0xf82,0xe94,0xcd6,0xa7c,0x7d0,0x524,0x2ca,0x10c,0x1e,0x1e,0x10c,0x2ca,0x524};
+
 
 volatile uint8_t i = 0;
 volatile uint8_t j = 0;
