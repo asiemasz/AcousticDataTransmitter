@@ -70,7 +70,7 @@ int main() {
 	timer_enableIT(&tim2, TIMER_IT_TRGOUT);
 
 	adc_init(&adc);
-	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_144CYCL); //max. sampling time for 400 kHz sampling rate
+	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_56CYCL);
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
 	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_CIRCULAR_MODE);
