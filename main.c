@@ -82,10 +82,8 @@ uint16_t freq2 = 19000;
 volatile uint8_t dataReady = 0;
 uint16_t val;
 volatile float32_t y;
-uint16_t sine[10000];
 
 volatile uint64_t i = 0;
-volatile uint32_t j = 0;
 volatile uint16_t x;
 float32_t fn1;
 float32_t fn2;
@@ -132,7 +130,6 @@ int main()
 		{
 			y = (((arm_sin_f32(fn1*i*2*PI) + 1)/2) + ((arm_sin_f32(fn2*i*2*PI) + 1)/2)) / 2;
 			val = y*4000.0f;
-			sine[j++] = val;
 			MCP4822_setValue(&MCP4822, val, &cfg);
 			dataReady = 0;
 		}
