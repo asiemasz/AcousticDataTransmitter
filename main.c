@@ -6,9 +6,9 @@
 #include "uart.h"
 #include "spi.h"
 #include "MCP4822.h"
+#include "BPSK.h"
+#include "SRRC_filter.h"
 
-#define SAMPLES 20
-#define SYMBOLS 2
 #define FS 48000
 #define FSystem 84000000
 
@@ -72,24 +72,35 @@ MCP4822_device MCP4822 = {
 	.CSdisableFunction = MCP4822_CSdis};
 
 MCP4822_OUTPUT_CONFIG cfg = {
-	.gain = MCP4822_OUTPUT_GAIN_x2,
+	.gain = MCP4822_OUTPUT_GAIN_x1,
 	.output = MCP4822_DAC_B,
 	.powerDown = MCP4822_OUTPUT_POWERDOWN_CONTROL_BIT,
 };
 
-uint16_t freq1 = 20000;
-uint16_t freq2 = 19000;
 volatile uint8_t dataReady = 0;
-uint16_t val;
+float32_t test[1152];
 volatile float32_t y;
+volatile uint16_t val;
 
-volatile uint64_t i = 0;
-volatile uint16_t x;
-float32_t fn1;
-float32_t fn2;
+volatile uint32_t i = 0;
+
+uint8_t data[3] = {118, 161, 149};
+float32_t txSignal[1152]; 
+float32_t coeffs[33];
+uint8_t outData[3];
 
 int main()
 {
+	SRRC_getFIRCoeffs(4, 8, 0.25, coeffs, 33);
+
+	BPSK_parameters params = {
+	.Fb = 1000,
+	.Fs = FS,
+	.Fc = 17000,
+	.firCoeffs = coeffs,
+	.firCoeffsLength = 33
+	};
+
 	gpio_init(GPIOA);
 	gpio_init(GPIOC);
 
@@ -98,7 +109,6 @@ int main()
 		.outSpeed = GPIO_OUT_SPEED_VERY_HIGH,
 	};
 	gpio_setPinConfiguration(GPIOC, PIN3, &pin3);
-
 
 	uart2.baudRate = 115200;
 	uart2.mode = UART_TRANSMITTER_ONLY;
@@ -115,22 +125,28 @@ int main()
 	timer_enableIT(&tim2, TIMER_IT_UPDATE_EVENT);
 	timer_enableIT(&tim3, TIMER_IT_UPDATE_EVENT);
 
-
 	NVIC_EnableIRQ(TIM2_IRQn);
 	NVIC_EnableIRQ(TIM3_IRQn);
 
-	timer_start(&tim3);
-	fn1 = (float32_t)freq1/FS;
-	fn2 = (float32_t)freq2/FS;
+	BPSK_getOutputSignal(&params, data, 3, txSignal, 1152);
+
 	timer_start(&tim2);
+	timer_start(&tim3);
+
 
 	while (1)
 	{
 		if (dataReady)
 		{
-			y = (((arm_sin_f32(fn1*i*2*PI) + 1)/2) + ((arm_sin_f32(fn2*i*2*PI) + 1)/2)) / 2;
+			y = (txSignal[i-1] + 1.0f)/2.0f;
 			val = y*4000.0f;
+			test[i-1] = y*2.0f - 1.0f;
 			MCP4822_setValue(&MCP4822, val, &cfg);
+			if(i == 1152) {
+				timer_stop(&tim2);
+				i = 0;
+				BPSK_demodulateSignal(&params, txSignal, 1152, outData, 3);
+			}
 			dataReady = 0;
 		}
 	}
@@ -147,6 +163,4 @@ void TIM2_IRQHandler()
 void TIM3_IRQHandler()
 {
 	timer_clearITflag(&tim3);
-	//timer_setReloadVal(&tim2, reload[j]);
-	i = 0;
 }
