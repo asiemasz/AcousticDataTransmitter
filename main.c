@@ -6,7 +6,7 @@
 #include "adc.h"
 #include "uart.h"
 
-#define SAMPLES 256 //Supported FFT Lengths are 32, 64, 128, 256, 512, 1024, 2048, 4096.
+#define SAMPLES 3072
 
 //Filter
 #define BLOCK_SIZE 32
@@ -29,12 +29,9 @@ static UART_initStruct uart2;
 
 //data storage
 static volatile uint16_t dmaBuffer[SAMPLES*2];
-static float32_t buffer_input[SAMPLES], buffer_filtered[SAMPLES], buffer_output[SAMPLES], buffer_output_mag[SAMPLES], maxValue;
+static float32_t buffer_input[SAMPLES], buffer_filtered[SAMPLES];
 static uint16_t maxValueIndex;
 static volatile uint8_t dataReady;
-
-//FFT 
-static arm_rfft_fast_instance_f32 S; 
 
 int main() {		
 	//Peripherals initialization
@@ -73,11 +70,10 @@ int main() {
 	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_56CYCL);
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
-	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_CIRCULAR_MODE);
+	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_DIRECT_MODE);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
-	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
+	//dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
-	arm_rfft_fast_init_f32(&S, SAMPLES);
 	arm_fir_init_f32(&S_f, NUM_TAPS, firCoeffs32, firStateF32, SAMPLES);
 
 	timer_start(&tim2);	
@@ -87,11 +83,10 @@ int main() {
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			arm_rfft_fast_f32(&S, buffer_filtered, buffer_output, 0); //calculate DFT
-			arm_cmplx_mag_f32(buffer_output, buffer_output_mag, SAMPLES); //DFT modulus
-			arm_max_f32(buffer_output_mag, SAMPLES/2, &maxValue, &maxValueIndex);//find main peak within 0-(Fs/2) freq. range
-			sprintf(buf, "Detected frequency: %.4f \r\n", maxValueIndex*48000.0f/SAMPLES);
-			uart_sendString(&uart2, buf);
+			for(uint16_t i = 0; i < SAMPLES; i++) {
+				sprintf(buf, "%f %f \r\n", buffer_input[i], buffer_filtered[i]);
+				uart_sendString(&uart2, buf);
+			}
 			dataReady = 0;
 		}
 	}
