@@ -4,4 +4,4 @@
 	branch = main
 [submodule "DSP_own"]
 	path = DSP_own
-	url = https://github.com/asiemasz/DSP_own
+	url = https://github.com/asiemasz/DSP_own.git
