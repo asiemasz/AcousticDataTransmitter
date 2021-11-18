@@ -11,6 +11,15 @@
 
 #define FS 48000
 #define FSystem 84000000
+#define FC 17000
+#define ROLLOVER_FACTOR 0.25
+#define FSPAN 4
+#define FB 1000
+#define SPB (FS / FB)
+#define N_BITS 8
+
+#define DATA_LENGTH (SPB*N_BITS*8)
+
 
 extern uint32_t SystemCoreClock;
 
@@ -72,33 +81,34 @@ MCP4822_device MCP4822 = {
 	.CSdisableFunction = MCP4822_CSdis};
 
 MCP4822_OUTPUT_CONFIG cfg = {
-	.gain = MCP4822_OUTPUT_GAIN_x1,
+	.gain = MCP4822_OUTPUT_GAIN_x2,
 	.output = MCP4822_DAC_B,
 	.powerDown = MCP4822_OUTPUT_POWERDOWN_CONTROL_BIT,
 };
 
 volatile uint8_t dataReady = 0;
-float32_t test[1152];
 volatile float32_t y;
 volatile uint16_t val;
 
 volatile uint32_t i = 0;
 
-uint8_t data[3] = {118, 161, 149};
-float32_t txSignal[1152]; 
-float32_t coeffs[33];
-uint8_t outData[3];
+uint8_t data[N_BITS] = {0, 161, 149, 30, 0,120, 240, 2};
+
+float32_t txSignal[DATA_LENGTH]; 
+float32_t coeffs[FSPAN*SPB + 1];
+uint8_t outData[N_BITS];
 
 int main()
 {
-	SRRC_getFIRCoeffs(4, 8, 0.25, coeffs, 33);
+	SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, coeffs, FSPAN*SPB + 1);
 
 	BPSK_parameters params = {
-	.Fb = 1000,
+	.Fb = FB,
 	.Fs = FS,
-	.Fc = 17000,
+	.Fc = FC,
+	.FSpan = FSPAN,
 	.firCoeffs = coeffs,
-	.firCoeffsLength = 33
+	.firCoeffsLength = FSPAN*SPB + 1
 	};
 
 	gpio_init(GPIOA);
@@ -128,11 +138,10 @@ int main()
 	NVIC_EnableIRQ(TIM2_IRQn);
 	NVIC_EnableIRQ(TIM3_IRQn);
 
-	BPSK_getOutputSignal(&params, data, 3, txSignal, 1152);
+	BPSK_getOutputSignal(&params, data, N_BITS, txSignal, DATA_LENGTH);
 
 	timer_start(&tim2);
 	timer_start(&tim3);
-
 
 	while (1)
 	{
@@ -140,12 +149,11 @@ int main()
 		{
 			y = (txSignal[i-1] + 1.0f)/2.0f;
 			val = y*4000.0f;
-			test[i-1] = y*2.0f - 1.0f;
 			MCP4822_setValue(&MCP4822, val, &cfg);
-			if(i == 1152) {
+			if(i == DATA_LENGTH) {
 				timer_stop(&tim2);
 				i = 0;
-				BPSK_demodulateSignal(&params, txSignal, 1152, outData, 3);
+				BPSK_demodulateSignal(&params, txSignal, DATA_LENGTH, outData, N_BITS);
 			}
 			dataReady = 0;
 		}
