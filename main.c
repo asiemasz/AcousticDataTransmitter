@@ -30,7 +30,6 @@ static UART_initStruct uart2;
 //data storage
 static volatile uint16_t dmaBuffer[SAMPLES*2];
 static float32_t buffer_input[SAMPLES], buffer_filtered[SAMPLES];
-static uint16_t maxValueIndex;
 static volatile uint8_t dataReady;
 
 int main() {		
@@ -70,9 +69,9 @@ int main() {
 	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_56CYCL);
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
-	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_DIRECT_MODE);
+	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_CIRCULAR_MODE);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
-	//dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
+	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
 	arm_fir_init_f32(&S_f, NUM_TAPS, firCoeffs32, firStateF32, SAMPLES);
 
@@ -83,16 +82,18 @@ int main() {
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			for(uint16_t i = 0; i < SAMPLES; i++) {
-				sprintf(buf, "%f %f \r\n", buffer_input[i], buffer_filtered[i]);
-				uart_sendString(&uart2, buf);
-			}
 			dataReady = 0;
 		}
 	}
 		
 }
 void DMA2_Stream4_IRQHandler() {
+	char buf[20];
+	if(dataReady) {
+		sprintf(buf, "Overrun \r\n\n");
+		uart_sendString(&uart2, buf);
+		Default_Handler();
+	}
 
 	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER);
@@ -102,6 +103,8 @@ void DMA2_Stream4_IRQHandler() {
 			dataReady = 0x1;
 		}
 	}
+
+
 
 	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
