@@ -67,6 +67,8 @@ int main() {
 	};
 
 	uint8_t sync[1] = {SYNC_PATTERN};
+	uint16_t maxValIndex;
+	float32_t maxVal;
 
 	BPSK_getOutputSignal(&params, sync, 1, pattern, SYNC_PATTERN_LENGTH);
 
@@ -116,10 +118,19 @@ int main() {
 	char buf[40];
 	while(1) {
 		if(dataReady) {
+			float32_t max;
+			uint16_t idx;
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
+				arm_max_f32(buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE, &max, &idx);
+				for(uint16_t j = 0; j < BLOCK_SIZE; j++) {
+					*(buffer_filtered + (i * BLOCK_SIZE + j)) /= max;
+				}
 			}
-			arm_correlate_f32(buffer_filtered, 2048, pattern, SYNC_PATTERN_LENGTH, convRes);
+			arm_correlate_f32(buffer_filtered, SAMPLES, pattern, SYNC_PATTERN_LENGTH, convRes);
+			arm_max_f32(convRes, 5999, &maxVal, &maxValIndex);
+			sprintf(buf, "%f %d \r\n", maxVal, maxValIndex);
+			uart_sendString(&uart2, buf);
 			dataReady = 0;
 		}
 	}
@@ -127,11 +138,11 @@ int main() {
 }
 void DMA2_Stream4_IRQHandler() {
 	char buf[20];
-	if(dataReady) {
+	/*if(dataReady) {
 		sprintf(buf, "Overrun \r\n\n");
 		uart_sendString(&uart2, buf);
 		Default_Handler();
-	}
+	}*/
 
 	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER);
@@ -141,8 +152,6 @@ void DMA2_Stream4_IRQHandler() {
 			dataReady = 0x1;
 		}
 	}
-
-
 
 	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
