@@ -16,10 +16,12 @@
 #define FSPAN 4
 #define FB 1000
 #define SPB (FS / FB)
-#define N_BITS 8
+#define N_BYTES 3
 
-#define DATA_LENGTH (SPB*N_BITS*8)
+#define SYNC_PATTERN 170
 
+#define DATA_LENGTH (SPB*(N_BYTES+1)*8)
+#define SYNC_PATTERN_LENGTH (SPB*8)
 
 extern uint32_t SystemCoreClock;
 
@@ -92,11 +94,11 @@ volatile uint16_t val;
 
 volatile uint32_t i = 0;
 
-uint8_t data[N_BITS] = {0, 161, 149, 30, 0,120, 240, 2};
+uint8_t data[N_BYTES] = {25, 161, 149};
 
 float32_t txSignal[DATA_LENGTH]; 
 float32_t coeffs[FSPAN*SPB + 1];
-uint8_t outData[N_BITS];
+uint8_t outData[N_BYTES];
 
 int main()
 {
@@ -138,7 +140,13 @@ int main()
 	NVIC_EnableIRQ(TIM2_IRQn);
 	NVIC_EnableIRQ(TIM3_IRQn);
 
-	BPSK_getOutputSignal(&params, data, N_BITS, txSignal, DATA_LENGTH);
+	uint8_t sync_plus_data[N_BYTES + 1];
+	sync_plus_data[0] = SYNC_PATTERN;q
+
+	for(uint16_t k = 1; k < (N_BYTES + 1); k++)
+		sync_plus_data[k] = data[k-1];
+
+	BPSK_getOutputSignal(&params, sync_plus_data, N_BYTES + 1, txSignal, DATA_LENGTH);
 
 	timer_start(&tim2);
 	timer_start(&tim3);
@@ -151,9 +159,9 @@ int main()
 			val = y*4000.0f;
 			MCP4822_setValue(&MCP4822, val, &cfg);
 			if(i == DATA_LENGTH) {
-				timer_stop(&tim2);
+				//timer_stop(&tim2);
 				i = 0;
-				BPSK_demodulateSignal(&params, txSignal, DATA_LENGTH, outData, N_BITS);
+				//BPSK_demodulateSignal(&params, txSignal, DATA_LENGTH, outData, N_BYTES);
 			}
 			dataReady = 0;
 		}
