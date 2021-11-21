@@ -141,7 +141,7 @@ int main()
 	NVIC_EnableIRQ(TIM3_IRQn);
 
 	uint8_t sync_plus_data[N_BYTES + 1];
-	sync_plus_data[0] = SYNC_PATTERN;q
+	sync_plus_data[0] = SYNC_PATTERN;
 
 	for(uint16_t k = 1; k < (N_BYTES + 1); k++)
 		sync_plus_data[k] = data[k-1];
@@ -170,6 +170,13 @@ int main()
 
 void TIM2_IRQHandler()
 {
+	if(dataReady) {
+		char buf[20];
+		sprintf(buf, "Overrun");
+		uart_sendString(&uart2, buf);
+		Default_Handler();
+
+	}
 	timer_clearITflag(&tim2);
 	++i;
 
