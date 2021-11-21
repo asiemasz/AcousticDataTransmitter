@@ -5,8 +5,23 @@
 #include "timer.h"
 #include "adc.h"
 #include "uart.h"
+#include "SRRC_filter.h"
+#include "BPSK.h"
 
-#define SAMPLES 3072
+#define SAMPLES 2048
+
+#define FS 48000
+#define FSystem 84000000
+#define FC 17000
+#define ROLLOVER_FACTOR 0.25
+#define FSPAN 4
+#define FB 1000
+#define SPB (FS / FB)
+#define N_BYTES 3
+
+#define SYNC_PATTERN 170
+
+#define SYNC_PATTERN_LENGTH (SPB*8)
 
 //Filter
 #define BLOCK_SIZE 32
@@ -21,6 +36,12 @@ const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {-0.001238f, -0.002175f, -0.0
   -0.002175f, -0.001238f}; //highpass filter coeffs (15kHz +)
 static arm_fir_instance_f32 S_f;
 
+//Matched filter and pattern symbol
+float32_t coeffs[FSPAN*SPB + 1];
+float32_t pattern[SYNC_PATTERN_LENGTH];
+
+float32_t convRes[SAMPLES*2 - 1];
+
 //Peripherals
 static ADC_initStruct adc;
 static TIMER_initStruct tim2;
@@ -32,7 +53,23 @@ static volatile uint16_t dmaBuffer[SAMPLES*2];
 static float32_t buffer_input[SAMPLES], buffer_filtered[SAMPLES];
 static volatile uint8_t dataReady;
 
-int main() {		
+int main() {
+
+	SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, coeffs, FSPAN*SPB + 1);
+
+	BPSK_parameters params = {
+	.Fb = FB,
+	.Fs = FS,
+	.Fc = FC,
+	.FSpan = FSPAN,
+	.firCoeffs = coeffs,
+	.firCoeffsLength = FSPAN*SPB + 1
+	};
+
+	uint8_t sync[1] = {SYNC_PATTERN};
+
+	BPSK_getOutputSignal(&params, sync, 1, pattern, SYNC_PATTERN_LENGTH);
+
 	//Peripherals initialization
 	uart2.baudRate = 115200;
 	uart2.mode = UART_TRANSMITTER_ONLY;
@@ -82,6 +119,7 @@ int main() {
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
+			arm_correlate_f32(buffer_filtered, 2048, pattern, SYNC_PATTERN_LENGTH, convRes);
 			dataReady = 0;
 		}
 	}
