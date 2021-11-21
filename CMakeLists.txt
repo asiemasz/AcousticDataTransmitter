@@ -26,13 +26,14 @@ include_directories(
   "Drivers/CMSIS/DSP/Include"
   "Drivers/CMSIS/Device/ST/STM32F4xx/Include"
   "inc"
+  "DSP_own/src"
   "MCP4822"
 )
 
 add_compile_definitions(
   STM32F401xE
   ARM_MATH_CM4
-  __FPU_PRESENT
+  __FPU_PRESENT=1U
 )
 
 file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
@@ -49,6 +50,7 @@ file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
   "Drivers/CMSIS/DSP/Source/SupportFunctions/*.c"  
   "Drivers/CMSIS/DSP/Source/TransformFunctions/*.c"  
   "MCP4822/*.c"
+  "DSP_own/src/*.c"
   "main.c"
 )
 
