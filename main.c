@@ -43,6 +43,7 @@ static float32_t pattern[SYNC_PATTERN_LENGTH];
 static q15_t     pattern_q15[SYNC_PATTERN_LENGTH];
 
 static q15_t corrRes[2*SAMPLES*2 - 1];
+static q15_t result[SPB*8*3];
 
 //Peripherals
 static ADC_initStruct adc;
@@ -69,13 +70,16 @@ int main() {
 	};
 
 	uint8_t sync[1] = {SYNC_PATTERN};
-	uint16_t maxValIndex;
-	float32_t maxVal;
 
 	BPSK_getOutputSignal(&params, sync, 1, pattern, SYNC_PATTERN_LENGTH);
 
 	arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
-	arm_float_to_q15(pattern, pattern_q15, SYNC_PATTERN_LENGTH);
+	float32_t maxVal;
+	uint16_t maxIdx;
+	arm_max_f32(pattern, SYNC_PATTERN_LENGTH, &maxVal, &maxIdx);
+	for(uint16_t i = 0; i < SYNC_PATTERN_LENGTH; i++) {
+		pattern_q15[i] = (pattern[i]/maxVal) * 1000;
+	}
 
 	//Peripherals initialization
 	uart2.baudRate = 115200;
@@ -128,8 +132,8 @@ int main() {
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_fast_q15(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			arm_correlate_fast_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
-			arm_max_q15(corrRes, 2*SAMPLES + 1, &max, &idx);
+			arm_correlate_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
+			arm_max_q15(corrRes + 2*SAMPLES, 2*SAMPLES, &max, &idx);
 			sprintf(buf, "\r\n\r\n Pattern (f): Pattern (q): \r\n");
 			uart_sendString(&uart2, buf);
 			for(uint16_t i = 0; i < SYNC_PATTERN_LENGTH; i++) {
@@ -147,6 +151,19 @@ int main() {
 			uart_sendString(&uart2, buf);
 			for(uint16_t i = 0; i < (2*2*SAMPLES-1); i++) {
 				sprintf(buf, "%d \r\n", corrRes[i]);
+				uart_sendString(&uart2, buf);
+			}
+
+			sprintf(buf, "max: %d \r\n", idx);
+			uart_sendString(&uart2, buf);
+
+			arm_copy_q15((buffer_filtered + max + SYNC_PATTERN_LENGTH + SPB/2),result ,1152);
+
+			sprintf(buf, "\r\n\r\n Result: \r\n");
+			uart_sendString(&uart2, buf);			
+
+			for(uint16_t i = 0; i < 1152; i++) {
+				sprintf(buf, "%d \r\n", result[i]);
 				uart_sendString(&uart2, buf);
 			}
 
