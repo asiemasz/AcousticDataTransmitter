@@ -25,22 +25,24 @@
 
 //Filter
 #define BLOCK_SIZE 32
-#define NUM_TAPS_ARRAY_SIZE 29
-#define NUM_TAPS 29
-static float32_t firStateF32[SAMPLES + NUM_TAPS - 1];
-static uint16_t numBlocks = SAMPLES/BLOCK_SIZE;
+#define NUM_TAPS_ARRAY_SIZE 30
+#define NUM_TAPS 30
+static uint16_t numBlocks = 2*SAMPLES/BLOCK_SIZE;
 
-const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {-0.001238f, -0.002175f, -0.000845f, 0.003789f, 0.007679f, 0.002303f, -0.013385f,
+static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {-0.001238f, -0.002175f, -0.000845f, 0.003789f, 0.007679f, 0.002303f, -0.013385f,
  -0.022869f, -0.004360f, 0.038050f, 0.059609f, 0.006119f, -0.128249f, -0.275917f, 0.660179f, -0.275917f, -0.128249f, 
  0.006119f, 0.059609f, 0.038050f, -0.004360f, -0.022869f, -0.013385f, 0.002303f, 0.007679f, 0.003789f, -0.000845f,
-  -0.002175f, -0.001238f}; //highpass filter coeffs (15kHz +)
-static arm_fir_instance_f32 S_f;
+  -0.002175f, -0.001238f, 0}; //highpass filter coeffs (15kHz +)
+static arm_fir_instance_q15 S_f;
+static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
+static q15_t firState_q15[SAMPLES + NUM_TAPS - 1];
 
 //Matched filter and pattern symbol
-float32_t coeffs[FSPAN*SPB + 1];
-float32_t pattern[SYNC_PATTERN_LENGTH];
+static float32_t coeffs[FSPAN*SPB + 1];
+static float32_t pattern[SYNC_PATTERN_LENGTH];
+static q15_t     pattern_q15[SYNC_PATTERN_LENGTH];
 
-float32_t convRes[SAMPLES*2 - 1];
+static q15_t convRes[2*SAMPLES*2 - 1];
 
 //Peripherals
 static ADC_initStruct adc;
@@ -50,8 +52,12 @@ static UART_initStruct uart2;
 
 //data storage
 static volatile uint16_t dmaBuffer[SAMPLES*2];
-static float32_t buffer_input[SAMPLES], buffer_filtered[SAMPLES];
+static q15_t buffer_input[2*SAMPLES], buffer_filtered[2*SAMPLES];
 static volatile uint8_t dataReady;
+
+//
+arm_rfft_instance_q15 S_RFFT;
+q15_t fft[SAMPLES];
 
 int main() {
 
@@ -71,6 +77,9 @@ int main() {
 	float32_t maxVal;
 
 	BPSK_getOutputSignal(&params, sync, 1, pattern, SYNC_PATTERN_LENGTH);
+
+	arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
+	arm_float_to_q15(pattern, pattern_q15, SYNC_PATTERN_LENGTH);
 
 	//Peripherals initialization
 	uart2.baudRate = 115200;
@@ -108,29 +117,44 @@ int main() {
 	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_56CYCL);
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
-	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_CIRCULAR_MODE);
+	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_DIRECT_MODE);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
-	arm_fir_init_f32(&S_f, NUM_TAPS, firCoeffs32, firStateF32, SAMPLES);
+	arm_fir_init_q15(&S_f, NUM_TAPS, firCoeffs_q15, firState_q15, BLOCK_SIZE);
+	arm_rfft_init_q15(&S_RFFT, 2048, 0, 0);
 
 	timer_start(&tim2);	
 	char buf[40];
 	while(1) {
 		if(dataReady) {
-			float32_t max;
+			q15_t max;
 			uint16_t idx;
 			for (uint32_t i = 0; i < numBlocks; i++) {
-				arm_fir_f32(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
-				arm_max_f32(buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE, &max, &idx);
-				for(uint16_t j = 0; j < BLOCK_SIZE; j++) {
-					*(buffer_filtered + (i * BLOCK_SIZE + j)) /= max;
-				}
+				arm_fir_fast_q15(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			arm_correlate_f32(buffer_filtered, SAMPLES, pattern, SYNC_PATTERN_LENGTH, convRes);
-			arm_max_f32(convRes, 5999, &maxVal, &maxValIndex);
-			sprintf(buf, "%f %d \r\n", maxVal, maxValIndex);
+			arm_conv_fast_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, convRes);
+			arm_max_q15(convRes, 2*SAMPLES + 1, &max, &idx);
+			sprintf(buf, "\r\n\r\n Pattern (f): Pattern (q): \r\n");
 			uart_sendString(&uart2, buf);
+			for(uint16_t i = 0; i < SYNC_PATTERN_LENGTH; i++) {
+				sprintf(buf, "%f %d \r\n",pattern[i], pattern_q15[i]);
+				uart_sendString(&uart2, buf);
+			}
+
+			sprintf(buf, "\r\n\r\n Buffer:  Buffer filtered: \r\n");
+			uart_sendString(&uart2, buf);
+			for(uint16_t i = 0; i < 2*SAMPLES; i++) {
+				sprintf(buf, "%d %d \r\n ", buffer_input[i], buffer_filtered[i]);
+				uart_sendString(&uart2, buf);
+			}
+			sprintf(buf, "\r\n\r\n Conv: \r\n");
+			uart_sendString(&uart2, buf);
+			for(uint16_t i = 0; i < (2*2*SAMPLES+1); i++) {
+				sprintf(buf, "%d \r\n", convRes[i]);
+				uart_sendString(&uart2, buf);
+			}
+
 			dataReady = 0;
 		}
 	}
@@ -138,18 +162,18 @@ int main() {
 }
 void DMA2_Stream4_IRQHandler() {
 	char buf[20];
-	/*if(dataReady) {
+	if(dataReady) {
 		sprintf(buf, "Overrun \r\n\n");
 		uart_sendString(&uart2, buf);
-		Default_Handler();
-	}*/
+		//Default_Handler();
+	}
 
 	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER);
 		if(!dataReady) {
 			for(uint16_t i = 0; i < SAMPLES; i++)
 				buffer_input[i] = dmaBuffer[i];
-			dataReady = 0x1;
+			//dataReady = 0x1;
 		}
 	}
 
