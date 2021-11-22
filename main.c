@@ -42,7 +42,7 @@ static float32_t coeffs[FSPAN*SPB + 1];
 static float32_t pattern[SYNC_PATTERN_LENGTH];
 static q15_t     pattern_q15[SYNC_PATTERN_LENGTH];
 
-static q15_t convRes[2*SAMPLES*2 - 1];
+static q15_t corrRes[2*SAMPLES*2 - 1];
 
 //Peripherals
 static ADC_initStruct adc;
@@ -54,10 +54,6 @@ static UART_initStruct uart2;
 static volatile uint16_t dmaBuffer[SAMPLES*2];
 static q15_t buffer_input[2*SAMPLES], buffer_filtered[2*SAMPLES];
 static volatile uint8_t dataReady;
-
-//
-arm_rfft_instance_q15 S_RFFT;
-q15_t fft[SAMPLES];
 
 int main() {
 
@@ -122,7 +118,6 @@ int main() {
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
 	arm_fir_init_q15(&S_f, NUM_TAPS, firCoeffs_q15, firState_q15, BLOCK_SIZE);
-	arm_rfft_init_q15(&S_RFFT, 2048, 0, 0);
 
 	timer_start(&tim2);	
 	char buf[40];
@@ -133,8 +128,8 @@ int main() {
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_fast_q15(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			arm_conv_fast_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, convRes);
-			arm_max_q15(convRes, 2*SAMPLES + 1, &max, &idx);
+			arm_correlate_fast_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
+			arm_max_q15(corrRes, 2*SAMPLES + 1, &max, &idx);
 			sprintf(buf, "\r\n\r\n Pattern (f): Pattern (q): \r\n");
 			uart_sendString(&uart2, buf);
 			for(uint16_t i = 0; i < SYNC_PATTERN_LENGTH; i++) {
@@ -148,10 +143,10 @@ int main() {
 				sprintf(buf, "%d %d \r\n ", buffer_input[i], buffer_filtered[i]);
 				uart_sendString(&uart2, buf);
 			}
-			sprintf(buf, "\r\n\r\n Conv: \r\n");
+			sprintf(buf, "\r\n\r\n Corr: \r\n");
 			uart_sendString(&uart2, buf);
-			for(uint16_t i = 0; i < (2*2*SAMPLES+1); i++) {
-				sprintf(buf, "%d \r\n", convRes[i]);
+			for(uint16_t i = 0; i < (2*2*SAMPLES-1); i++) {
+				sprintf(buf, "%d \r\n", corrRes[i]);
 				uart_sendString(&uart2, buf);
 			}
 
