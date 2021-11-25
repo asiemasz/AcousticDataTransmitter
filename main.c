@@ -158,20 +158,24 @@ int main() {
 
 			sprintf(buf, "max: %d \r\n", idx);
 			uart_sendString(&uart2, buf);
-
-			if(max > 2*SAMPLES - 1152)
-				arm_copy_q15((buffer_filtered + max + SYNC_PATTERN_LENGTH + NUM_TAPS_ARRAY_SIZE), result ,1152);
-
+			if(idx < 4096 - 1152 - SYNC_PATTERN_LENGTH)
+				arm_copy_q15((buffer_filtered + idx + SYNC_PATTERN_LENGTH), result ,1152);
+			else 
+				arm_copy_q15((buffer_filtered + idx - 1152), result, 1152);
+				
 			sprintf(buf, "\r\n\r\n Result: \r\n");
-			uart_sendString(&uart2, buf);			
+			uart_sendString(&uart2, buf);	
+			arm_q15_to_float(result, result_f, 1152);
 
 			for(uint16_t i = 0; i < 1152; i++) {
-				sprintf(buf, "%d \r\n", result[i]);
+				sprintf(buf, "%d %f\r\n", result[i], result_f[i]);
 				uart_sendString(&uart2, buf);
 			}
 
-			arm_q15_to_float(result, result_f, 1152);
 			BPSK_demodulateSignal(&params, result_f, 1152, data, 3);
+
+			sprintf(buf, "\r\n\r\n %d %d %d \r\n", data[0], data[1], data[2]);
+			uart_sendString(&uart2, buf);
 
 			dataReady = 0;
 		}
