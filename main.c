@@ -44,6 +44,8 @@ static q15_t     pattern_q15[SYNC_PATTERN_LENGTH];
 
 static q15_t corrRes[2*SAMPLES*2 - 1];
 static q15_t result[SPB*8*3];
+static float32_t result_f[SPB*8*3];
+static uint8_t data[3];
 
 //Peripherals
 static ADC_initStruct adc;
@@ -157,7 +159,8 @@ int main() {
 			sprintf(buf, "max: %d \r\n", idx);
 			uart_sendString(&uart2, buf);
 
-			arm_copy_q15((buffer_filtered + max + SYNC_PATTERN_LENGTH + SPB/2),result ,1152);
+			if(max > 2*SAMPLES - 1152)
+				arm_copy_q15((buffer_filtered + max + SYNC_PATTERN_LENGTH + NUM_TAPS_ARRAY_SIZE), result ,1152);
 
 			sprintf(buf, "\r\n\r\n Result: \r\n");
 			uart_sendString(&uart2, buf);			
@@ -166,6 +169,9 @@ int main() {
 				sprintf(buf, "%d \r\n", result[i]);
 				uart_sendString(&uart2, buf);
 			}
+
+			arm_q15_to_float(result, result_f, 1152);
+			BPSK_demodulateSignal(&params, result_f, 1152, data, 3);
 
 			dataReady = 0;
 		}
