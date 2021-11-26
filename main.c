@@ -134,7 +134,7 @@ int main() {
 			for (uint32_t i = 0; i < numBlocks; i++) {
 				arm_fir_fast_q15(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
 			}
-			arm_correlate_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
+			arm_correlate_fast_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
 			arm_max_q15(corrRes + 2*SAMPLES, 2*SAMPLES, &max, &idx);
 
 			if(idx < 4096 - 1152 - SYNC_PATTERN_LENGTH)
@@ -151,7 +151,7 @@ int main() {
 			if(data[0] == 25 && data[1] == 161 && data[2] == 149)
 				uart_sendString(&uart2, "ok\r\n");
 			else
-				uart_sendString(&uart2, "nie ok\r\n"); /
+				uart_sendString(&uart2, "nie ok\r\n"); 
 
 			dataReady = 0;
 		}
