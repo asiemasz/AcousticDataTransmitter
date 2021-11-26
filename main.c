@@ -119,8 +119,8 @@ int main() {
 	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_56CYCL);
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
-	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_DIRECT_MODE);
-	dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
+	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_CIRCULAR_MODE);
+	//dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
 	arm_fir_init_q15(&S_f, NUM_TAPS, firCoeffs_q15, firState_q15, BLOCK_SIZE);
@@ -136,46 +136,22 @@ int main() {
 			}
 			arm_correlate_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
 			arm_max_q15(corrRes + 2*SAMPLES, 2*SAMPLES, &max, &idx);
-			sprintf(buf, "\r\n\r\n Pattern (f): Pattern (q): \r\n");
-			uart_sendString(&uart2, buf);
-			for(uint16_t i = 0; i < SYNC_PATTERN_LENGTH; i++) {
-				sprintf(buf, "%f %d \r\n",pattern[i], pattern_q15[i]);
-				uart_sendString(&uart2, buf);
-			}
 
-			sprintf(buf, "\r\n\r\n Buffer:  Buffer filtered: \r\n");
-			uart_sendString(&uart2, buf);
-			for(uint16_t i = 0; i < 2*SAMPLES; i++) {
-				sprintf(buf, "%d %d \r\n ", buffer_input[i], buffer_filtered[i]);
-				uart_sendString(&uart2, buf);
-			}
-			sprintf(buf, "\r\n\r\n Corr: \r\n");
-			uart_sendString(&uart2, buf);
-			for(uint16_t i = 0; i < (2*2*SAMPLES-1); i++) {
-				sprintf(buf, "%d \r\n", corrRes[i]);
-				uart_sendString(&uart2, buf);
-			}
-
-			sprintf(buf, "max: %d \r\n", idx);
-			uart_sendString(&uart2, buf);
 			if(idx < 4096 - 1152 - SYNC_PATTERN_LENGTH)
 				arm_copy_q15((buffer_filtered + idx + SYNC_PATTERN_LENGTH), result ,1152);
 			else 
 				arm_copy_q15((buffer_filtered + idx - 1152), result, 1152);
-				
-			sprintf(buf, "\r\n\r\n Result: \r\n");
-			uart_sendString(&uart2, buf);	
-			arm_q15_to_float(result, result_f, 1152);
 
-			for(uint16_t i = 0; i < 1152; i++) {
-				sprintf(buf, "%d %f\r\n", result[i], result_f[i]);
-				uart_sendString(&uart2, buf);
-			}
+			arm_q15_to_float(result, result_f, 1152);
 
 			BPSK_demodulateSignal(&params, result_f, 1152, data, 3);
 
-			sprintf(buf, "\r\n\r\n %d %d %d \r\n", data[0], data[1], data[2]);
-			uart_sendString(&uart2, buf);
+
+			//not very elegant, but useful for future changes approving(smaller buffer etc)
+			if(data[0] == 25 && data[1] == 161 && data[2] == 149)
+				uart_sendString(&uart2, "ok\r\n");
+			else
+				uart_sendString(&uart2, "nie ok\r\n"); /
 
 			dataReady = 0;
 		}
@@ -187,22 +163,22 @@ void DMA2_Stream4_IRQHandler() {
 	if(dataReady) {
 		sprintf(buf, "Overrun \r\n\n");
 		uart_sendString(&uart2, buf);
-		//Default_Handler();
+		Default_Handler();
 	}
 
-	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER)) {
+	/*if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER);
 		if(!dataReady) {
 			for(uint16_t i = 0; i < SAMPLES; i++)
 				buffer_input[i] = dmaBuffer[i];
-			//dataReady = 0x1;
+			dataReady = 0x1;
 		}
-	}
+	}*/
 
 	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
 		if(!dataReady) {
-			for(uint16_t i = SAMPLES; i < 2*SAMPLES; i++)
+			for(uint16_t i = 0; i < 2*SAMPLES; i++)
 				buffer_input[i] = dmaBuffer[i];
 			dataReady = 0x1;
 		}
