@@ -23,20 +23,15 @@
 
 #define SYNC_PATTERN_LENGTH (SPB*8)
 
-//Filter
-#define BLOCK_SIZE 32
 #define NUM_TAPS_ARRAY_SIZE 30
-#define NUM_TAPS 30
-static uint16_t numBlocks = 2*SAMPLES/BLOCK_SIZE;
 
 static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {-0.001238f, -0.002175f, -0.000845f, 0.003789f, 0.007679f, 0.002303f, -0.013385f,
  -0.022869f, -0.004360f, 0.038050f, 0.059609f, 0.006119f, -0.128249f, -0.275917f, 0.660179f, -0.275917f, -0.128249f, 
  0.006119f, 0.059609f, 0.038050f, -0.004360f, -0.022869f, -0.013385f, 0.002303f, 0.007679f, 0.003789f, -0.000845f,
   -0.002175f, -0.001238f, 0}; //highpass filter coeffs (15kHz +)
-static arm_fir_instance_q15 S_f;
-static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
-static q15_t firState_q15[SAMPLES + NUM_TAPS - 1];
 
+static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
+static q15_t temp[2*SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
 //Matched filter and pattern symbol
 static float32_t coeffs[FSPAN*SPB + 1];
 static float32_t pattern[SYNC_PATTERN_LENGTH];
@@ -123,17 +118,15 @@ int main() {
 	//dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
-	arm_fir_init_q15(&S_f, NUM_TAPS, firCoeffs_q15, firState_q15, BLOCK_SIZE);
-
 	timer_start(&tim2);	
 	char buf[40];
 	while(1) {
 		if(dataReady) {
 			q15_t max;
 			uint16_t idx;
-			for (uint32_t i = 0; i < numBlocks; i++) {
-				arm_fir_fast_q15(&S_f, buffer_input + (i * BLOCK_SIZE), buffer_filtered + (i * BLOCK_SIZE), BLOCK_SIZE); //filter data
-			}
+			arm_conv_fast_q15(buffer_input, 2*SAMPLES, firCoeffs_q15, 30, temp);
+			arm_copy_q15(temp + NUM_TAPS_ARRAY_SIZE - 1, buffer_filtered, 2*SAMPLES);
+			
 			arm_correlate_fast_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
 			arm_max_q15(corrRes + 2*SAMPLES, 2*SAMPLES, &max, &idx);
 
