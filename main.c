@@ -45,6 +45,8 @@ static q15_t buffer_input[2*SAMPLES], buffer_filtered[2*SAMPLES];
 static float32_t buffer_filtered_f32[2*SAMPLES];
 static volatile uint8_t dataReady;
 
+uint8_t data[3];
+
 int main() {
 
 	SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, coeffs, FSPAN*SPB + 1);
@@ -98,7 +100,7 @@ int main() {
 	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_56CYCL);
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
-	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_DIRECT_MODE);
+	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_CIRCULAR_MODE);
 	//dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
@@ -106,7 +108,6 @@ int main() {
 	char buf[40];
 	while(1) {
 		if(dataReady) {
-			q15_t max;
 			uint32_t idx = 0;
 			arm_conv_fast_q15(buffer_input, 2*SAMPLES, firCoeffs_q15, 30, temp);
 			arm_copy_q15(temp + NUM_TAPS_ARRAY_SIZE - 1, buffer_filtered, 2*SAMPLES);
@@ -115,15 +116,14 @@ int main() {
 
 			BPSK_syncInputSignal(&params, buffer_filtered_f32, 2*SAMPLES, &idx);
 
-			sprintf(buf, "Data: Filtered: Filtered_f: \r\n");
-			uart_sendString(&uart2, buf);
+			BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx, 1152, data, 3);
 
-			for(uint16_t i = 0; i < 2*SAMPLES; i++) {
-				sprintf(buf, "%d %d %f \r\n", buffer_input[i], buffer_filtered[i], buffer_filtered_f32[i]);
-				uart_sendString(&uart2, buf);
+			if(data[0] == 25 && data[1] == 161 && data[2] == 149) {
+				sprintf(buf, "ok\r\n");
 			}
-
-			sprintf(buf, "\r\n\r\n Max idx = %d \r\n", idx);
+			else {
+				sprintf(buf, "nie ok, %d %d %d \r\n", data[0], data[1], data[2]);
+			}
 			uart_sendString(&uart2, buf);
 
 			dataReady = 0;
