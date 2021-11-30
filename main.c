@@ -114,7 +114,7 @@ int main() {
 	adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_56CYCL);
 	NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
-	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_CIRCULAR_MODE);
+	adc_startDMA(&adc, (uint32_t *)dmaBuffer,(uint16_t) SAMPLES*2, DMA_DIRECT_MODE);
 	//dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
 	dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
@@ -171,9 +171,12 @@ void DMA2_Stream4_IRQHandler() {
 	if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
 		dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
 		if(!dataReady) {
-			for(uint16_t i = 0; i < 2*SAMPLES; i++)
+			for(uint16_t i = 0; i < 2*SAMPLES; i++) {
 				buffer_input[i] = dmaBuffer[i];
-			dataReady = 0x1;
+				sprintf(buf, "%d \r\n", buffer_input[i]);
+				uart_sendString(&uart2, buf);
+			}
+			//dataReady = 0x1;
 		}
 	}
 }
