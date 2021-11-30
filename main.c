@@ -19,10 +19,6 @@
 #define SPB (FS / FB)
 #define N_BYTES 3
 
-#define SYNC_PATTERN 170
-
-#define SYNC_PATTERN_LENGTH (SPB*8)
-
 #define NUM_TAPS_ARRAY_SIZE 30
 
 static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {-0.001238f, -0.002175f, -0.000845f, 0.003789f, 0.007679f, 0.002303f, -0.013385f,
@@ -34,13 +30,8 @@ static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
 static q15_t temp[2*SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
 //Matched filter and pattern symbol
 static float32_t coeffs[FSPAN*SPB + 1];
-static float32_t pattern[SYNC_PATTERN_LENGTH];
-static q15_t     pattern_q15[SYNC_PATTERN_LENGTH];
 
 static q15_t corrRes[2*SAMPLES*2 - 1];
-static q15_t result[SPB*8*3];
-static float32_t result_f[SPB*8*3];
-static uint8_t data[3];
 
 //Peripherals
 static ADC_initStruct adc;
@@ -51,6 +42,7 @@ static UART_initStruct uart2;
 //data storage
 static volatile uint16_t dmaBuffer[SAMPLES*2];
 static q15_t buffer_input[2*SAMPLES], buffer_filtered[2*SAMPLES];
+static float32_t buffer_filtered_f32[2*SAMPLES];
 static volatile uint8_t dataReady;
 
 int main() {
@@ -63,20 +55,12 @@ int main() {
 	.Fc = FC,
 	.FSpan = FSPAN,
 	.firCoeffs = coeffs,
-	.firCoeffsLength = FSPAN*SPB + 1
+	.firCoeffsLength = FSPAN*SPB + 1,
+	.prefixLength = 400,
+	.frameLength = 1152
 	};
 
-	uint8_t sync[1] = {SYNC_PATTERN};
-
-	BPSK_getOutputSignal(&params, sync, 1, pattern, SYNC_PATTERN_LENGTH);
-
 	arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
-	float32_t maxVal;
-	uint16_t maxIdx;
-	arm_max_f32(pattern, SYNC_PATTERN_LENGTH, &maxVal, &maxIdx);
-	for(uint16_t i = 0; i < SYNC_PATTERN_LENGTH; i++) {
-		pattern_q15[i] = (pattern[i]/maxVal) * 1000;
-	}
 
 	//Peripherals initialization
 	uart2.baudRate = 115200;
@@ -123,28 +107,24 @@ int main() {
 	while(1) {
 		if(dataReady) {
 			q15_t max;
-			uint16_t idx;
+			uint32_t idx = 0;
 			arm_conv_fast_q15(buffer_input, 2*SAMPLES, firCoeffs_q15, 30, temp);
 			arm_copy_q15(temp + NUM_TAPS_ARRAY_SIZE - 1, buffer_filtered, 2*SAMPLES);
 			
-			arm_correlate_fast_q15(buffer_filtered, 2*SAMPLES, pattern_q15, SYNC_PATTERN_LENGTH, corrRes);
-			arm_max_q15(corrRes + 2*SAMPLES, 2*SAMPLES, &max, &idx);
+			arm_q15_to_float(buffer_filtered, buffer_filtered_f32, 2*SAMPLES);
 
-			if(idx < 4096 - 1152 - SYNC_PATTERN_LENGTH)
-				arm_copy_q15((buffer_filtered + idx + SYNC_PATTERN_LENGTH), result ,1152);
-			else 
-				arm_copy_q15((buffer_filtered + idx - 1152), result, 1152);
+			BPSK_syncInputSignal(&params, buffer_filtered_f32, 2*SAMPLES, &idx);
 
-			arm_q15_to_float(result, result_f, 1152);
+			sprintf(buf, "Data: Filtered: Filtered_f: \r\n");
+			uart_sendString(&uart2, buf);
 
-			BPSK_demodulateSignal(&params, result_f, 1152, data, 3);
+			for(uint16_t i = 0; i < 2*SAMPLES; i++) {
+				sprintf(buf, "%d %d %f \r\n", buffer_input[i], buffer_filtered[i], buffer_filtered_f32[i]);
+				uart_sendString(&uart2, buf);
+			}
 
-
-			//not very elegant, but useful for future changes approving(smaller buffer etc)
-			if(data[0] == 25 && data[1] == 161 && data[2] == 149)
-				uart_sendString(&uart2, "ok\r\n");
-			else
-				uart_sendString(&uart2, "nie ok\r\n"); 
+			sprintf(buf, "\r\n\r\n Max idx = %d \r\n", idx);
+			uart_sendString(&uart2, buf);
 
 			dataReady = 0;
 		}
@@ -173,10 +153,8 @@ void DMA2_Stream4_IRQHandler() {
 		if(!dataReady) {
 			for(uint16_t i = 0; i < 2*SAMPLES; i++) {
 				buffer_input[i] = dmaBuffer[i];
-				sprintf(buf, "%d \r\n", buffer_input[i]);
-				uart_sendString(&uart2, buf);
 			}
-			//dataReady = 0x1;
+			dataReady = 0x1;
 		}
 	}
 }
