@@ -17,11 +17,10 @@
 #define FB 1000
 #define SPB (FS / FB)
 #define N_BYTES 3
+#define PREFIX_LENGTH 60
 
-#define SYNC_PATTERN 170
 
-#define DATA_LENGTH (SPB*(N_BYTES+1)*8)
-#define SYNC_PATTERN_LENGTH (SPB*8)
+#define DATA_LENGTH (SPB*(N_BYTES)*8 + PREFIX_LENGTH)
 
 extern uint32_t SystemCoreClock;
 
@@ -50,13 +49,6 @@ const TIMER_initStruct tim2 = { //sampling frequency
 	.direction = TIMER_COUNTER_DIRECTION_DOWN,
 	.prescaler = 1,
 	.autoReload = FSystem / FS,
-};
-
-TIMER_initStruct tim3 = { // symbol change frequency
-	.direction = TIMER_COUNTER_DIRECTION_DOWN,
-	.prescaler = 1000,
-	.autoReload = FSystem/1000,
-	.tim = TIM3
 };
 
 void MCP4822_write(const uint8_t *data, const uint16_t len)
@@ -98,7 +90,6 @@ uint8_t data[N_BYTES] = {25, 161, 149};
 
 float32_t txSignal[DATA_LENGTH]; 
 float32_t coeffs[FSPAN*SPB + 1];
-uint8_t outData[N_BYTES];
 
 int main()
 {
@@ -109,6 +100,7 @@ int main()
 	.Fs = FS,
 	.Fc = FC,
 	.FSpan = FSPAN,
+	.prefixLength = PREFIX_LENGTH,
 	.firCoeffs = coeffs,
 	.firCoeffsLength = FSPAN*SPB + 1
 	};
@@ -133,23 +125,14 @@ int main()
 	uart_init(&uart2);
 	spi_init(&spi1);
 	timer_init(&tim2);
-	timer_init(&tim3);
 	timer_enableIT(&tim2, TIMER_IT_UPDATE_EVENT);
-	timer_enableIT(&tim3, TIMER_IT_UPDATE_EVENT);
 
 	NVIC_EnableIRQ(TIM2_IRQn);
 	NVIC_EnableIRQ(TIM3_IRQn);
 
-	uint8_t sync_plus_data[N_BYTES + 1];
-	sync_plus_data[0] = SYNC_PATTERN;
-
-	for(uint16_t k = 1; k < (N_BYTES + 1); k++)
-		sync_plus_data[k] = data[k-1];
-
-	BPSK_getOutputSignal(&params, sync_plus_data, N_BYTES + 1, txSignal, DATA_LENGTH);
+	BPSK_getOutputSignal(&params, data, N_BYTES, txSignal, DATA_LENGTH);
 
 	timer_start(&tim2);
-	timer_start(&tim3);
 
 	while (1)
 	{
@@ -159,9 +142,7 @@ int main()
 			val = y*4000.0f;
 			MCP4822_setValue(&MCP4822, val, &cfg);
 			if(i == DATA_LENGTH) {
-				//timer_stop(&tim2);
 				i = 0;
-				//BPSK_demodulateSignal(&params, txSignal, DATA_LENGTH, outData, N_BYTES);
 			}
 			dataReady = 0;
 		}
@@ -181,9 +162,4 @@ void TIM2_IRQHandler()
 	++i;
 
 	dataReady = 1;
-}
-
-void TIM3_IRQHandler()
-{
-	timer_clearITflag(&tim3);
 }
