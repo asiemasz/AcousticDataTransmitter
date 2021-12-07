@@ -12,10 +12,10 @@
 
 #define FS 48000
 #define FSystem 84000000
-#define FC 17000
+#define FC 16000
 #define ROLLOVER_FACTOR 0.25
 #define FSPAN 4
-#define FB 1000
+#define FB 2000
 #define SPB (FS / FB)
 #define N_BYTES 3
 
@@ -51,6 +51,8 @@ static float32_t buffer_filtered_f32[2 * SAMPLES];
 static volatile uint8_t dataReady;
 
 uint8_t data[3];
+uint32_t idx[2 * SAMPLES / 576];
+uint16_t foundFrames;
 
 int main() {
 
@@ -62,8 +64,8 @@ int main() {
                             .FSpan = FSPAN,
                             .firCoeffs = coeffs,
                             .firCoeffsLength = FSPAN * SPB + 1,
-                            .prefixLength = 50,
-                            .frameLength = 1152};
+                            .prefixLength = 200,
+                            .frameLength = 576};
 
   arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
 
@@ -112,7 +114,6 @@ int main() {
   char buf[40];
   while (1) {
     if (dataReady) {
-      uint32_t idx = 0;
       arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15, 30, temp);
       arm_copy_q15(temp + NUM_TAPS_ARRAY_SIZE - 1, buffer_filtered,
                    2 * SAMPLES);
@@ -124,9 +125,15 @@ int main() {
         buffer_filtered_f32[i] = buffer_filtered_f32[i] / maxVal;
       }
 
-      BPSK_syncInputSignal(&params, buffer_filtered_f32, 2 * SAMPLES, &idx);
+      BPSK_syncInputSignal(&params, buffer_filtered_f32, SAMPLES, &idx,
+                           &foundFrames);
 
-      BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx, 1152, data, 3);
+      BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[0], 576, data,
+                            3);
+      BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[1], 576, data,
+                            3);
+      BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[2], 576, data,
+                            3);
 
       if (data[0] == 25 && data[1] == 161 && data[2] == 149) {
         sprintf(buf, "ok\r\n");
