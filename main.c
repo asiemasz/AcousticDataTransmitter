@@ -9,16 +9,15 @@
 #include "timer.h"
 #include "uart.h"
 
-
 #define FS 48000
 #define FSystem 84000000
-#define FC 17000
+#define FC 16000
 #define ROLLOVER_FACTOR 0.25
 #define FSPAN 4
-#define FB 1000
+#define FB 2000
 #define SPB (FS / FB)
 #define N_BYTES 3
-#define PREFIX_LENGTH 400
+#define PREFIX_LENGTH 200
 
 #define DATA_LENGTH (SPB * (N_BYTES)*8 + PREFIX_LENGTH)
 
