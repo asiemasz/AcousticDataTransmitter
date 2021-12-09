@@ -21,7 +21,7 @@
 
 #define NUM_TAPS_ARRAY_SIZE 30
 
-static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
+/*static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
     -0.001238f, -0.002175f, -0.000845f, 0.003789f,
     0.007679f,  0.002303f,  -0.013385f, -0.022869f,
     -0.004360f, 0.038050f,  0.059609f,  0.006119f,
@@ -29,7 +29,20 @@ static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
     -0.128249f, 0.006119f,  0.059609f,  0.038050f,
     -0.004360f, -0.022869f, -0.013385f, 0.002303f,
     0.007679f,  0.003789f,  -0.000845f, -0.002175f,
-    -0.001238f, 0}; // highpass filter coeffs (15kHz +)
+    -0.001238f, 0}; // highpass filter coeffs (15kHz +)*/
+
+static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
+    0.00279261903117354f, -0.00704872099778532f, 0.00522782761055690f,
+    0.00806094259064239f, -0.0241860356361024f,  0.0172911463428934f,
+    0.0235154921508081f,  -0.0610485215400974f,  0.0379882142012305f,
+    0.0455136710707779f,  -0.105344191064127f,   0.0590337115211551f,
+    0.0642021511029681f,  -0.135694004120373f,   0.0697312776608236f,
+    0.0697312776608236f,  -0.135694004120373f,   0.0642021511029681f,
+    0.0590337115211551f,  -0.105344191064127f,   0.0455136710707779f,
+    0.0379882142012305f,  -0.0610485215400974f,  0.0235154921508081f,
+    0.0172911463428934f,  -0.0241860356361024f,  0.00806094259064239f,
+    0.00522782761055690f, -0.00704872099778532f, 0.00279261903117354f};
+// bandpass (15-17)
 
 static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
 static q15_t temp[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
@@ -64,7 +77,7 @@ int main() {
                             .FSpan = FSPAN,
                             .firCoeffs = coeffs,
                             .firCoeffsLength = FSPAN * SPB + 1,
-                            .prefixLength = 200,
+                            .prefixLength = 100,
                             .frameLength = 576};
 
   arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
@@ -125,22 +138,19 @@ int main() {
         buffer_filtered_f32[i] = buffer_filtered_f32[i] / maxVal;
       }
 
-      BPSK_syncInputSignal(&params, buffer_filtered_f32, SAMPLES, &idx,
+      BPSK_syncInputSignal(&params, buffer_filtered_f32, 2 * SAMPLES, &idx,
                            &foundFrames);
 
-      BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[0], 576, data,
-                            3);
-      BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[1], 576, data,
-                            3);
-      BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[2], 576, data,
-                            3);
-
-      if (data[0] == 25 && data[1] == 161 && data[2] == 149) {
-        sprintf(buf, "ok\r\n");
-      } else {
-        sprintf(buf, "nie ok, %d %d %d \r\n", data[0], data[1], data[2]);
+      for (uint8_t i = 0; i < foundFrames; ++i) {
+        BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[i], 576, data,
+                              3);
+        if (data[0] == 25 && data[1] == 161 && data[2] == 149) {
+          sprintf(buf, "ok\r\n");
+        } else {
+          sprintf(buf, "nie ok, %d %d %d \r\n", data[0], data[1], data[2]);
+        }
+        uart_sendString(&uart2, buf);
       }
-      uart_sendString(&uart2, buf);
 
       dataReady = 0;
     }
