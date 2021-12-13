@@ -14,9 +14,9 @@
 #define FC 16000
 #define ROLLOVER_FACTOR 0.25
 #define FSPAN 4
-#define FB 2000
-#define SPB (FS / FB)
-#define N_BYTES 3
+#define FB 888.88
+#define SPB 54
+#define N_BYTES 1
 #define PREFIX_LENGTH 200
 
 #define DATA_LENGTH (SPB * (N_BYTES)*8 + PREFIX_LENGTH)
@@ -80,9 +80,10 @@ volatile uint8_t dataReady = 0;
 volatile float32_t y;
 volatile uint16_t val;
 
-volatile uint32_t i = 0;
+volatile uint64_t i = 0;
+volatile uint32_t j = 0;
 
-uint8_t data[N_BYTES] = {25, 161, 149};
+uint8_t data[N_BYTES] = {25}; //, 161, 149};
 
 float32_t txSignal[DATA_LENGTH];
 float32_t coeffs[FSPAN * SPB + 1];
@@ -127,12 +128,17 @@ int main() {
 
   timer_start(&tim2);
 
+  float32_t fn = (float32_t)FC / FS;
+
   while (1) {
     if (dataReady) {
-      y = (txSignal[i - 1] + 1.0f) / 2.0f;
+      y = (txSignal[j - 1] * arm_sin_f32(fn * (i - 1) * 2 * PI) + 1.0f) / 2.0f;
       val = y * 4000.0f;
       MCP4822_setValue(&MCP4822, val, &cfg);
-      if (i == DATA_LENGTH) {
+      if (j == DATA_LENGTH) {
+        j = 0;
+      }
+      if (i == 0xFFFFFFFFFFFFFFFF) {
         i = 0;
       }
       dataReady = 0;
@@ -148,7 +154,9 @@ void TIM2_IRQHandler() {
     Default_Handler();
   }
   timer_clearITflag(&tim2);
+
   ++i;
+  ++j;
 
   dataReady = 1;
 }
