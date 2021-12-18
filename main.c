@@ -12,12 +12,11 @@
 
 #define FS 48000
 #define FSystem 84000000
-#define FC 16000
+#define FC 17000
 #define ROLLOVER_FACTOR 0.25
 #define FSPAN 4
-#define FB 2000
-#define SPB (FS / FB)
-#define N_BYTES 3
+#define SPB 96
+#define N_BYTES 1
 
 #define NUM_TAPS_ARRAY_SIZE 30
 
@@ -63,22 +62,23 @@ static q15_t buffer_input[2 * SAMPLES], buffer_filtered[2 * SAMPLES];
 static float32_t buffer_filtered_f32[2 * SAMPLES];
 static volatile uint8_t dataReady;
 
-uint8_t data[3];
-uint32_t idx[2 * SAMPLES / 576];
+uint8_t data[1];
+uint16_t idx[2 * SAMPLES / 968];
 uint16_t foundFrames;
 
 int main() {
 
   SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, coeffs, FSPAN * SPB + 1);
 
-  BPSK_parameters params = {.Fb = FB,
+  BPSK_parameters params = {.Fb = FS / SPB,
                             .Fs = FS,
                             .Fc = FC,
                             .FSpan = FSPAN,
                             .firCoeffs = coeffs,
                             .firCoeffsLength = FSPAN * SPB + 1,
-                            .prefixLength = 100,
-                            .frameLength = 576};
+                            .prefixLength = 200,
+                            .frameLength = 768,
+                            .samplesPerBit = SPB};
 
   arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
 
@@ -141,13 +141,13 @@ int main() {
       BPSK_syncInputSignal(&params, buffer_filtered_f32, 2 * SAMPLES, &idx,
                            &foundFrames);
 
-      for (uint8_t i = 0; i < foundFrames; ++i) {
-        BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[i], 576, data,
-                              3);
-        if (data[0] == 25 && data[1] == 161 && data[2] == 149) {
+      for (uint8_t i = 0; i < 1; ++i) {
+        BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[i], 768, data,
+                              1);
+        if (data[0] == 25) {
           sprintf(buf, "ok\r\n");
         } else {
-          sprintf(buf, "nie ok, %d %d %d \r\n", data[0], data[1], data[2]);
+          sprintf(buf, "nie ok, %d \r\n", data[0]);
         }
         uart_sendString(&uart2, buf);
       }
