@@ -1,4 +1,5 @@
 #include "BPSK.h"
+#include "IIR_filter.h"
 #include "SRRC_filter.h"
 #include "adc.h"
 #include "arm_math.h"
@@ -12,15 +13,24 @@
 
 #define FS 48000
 #define FSystem 84000000
-#define FC 17000
-#define ROLLOVER_FACTOR 0.25
+#define FC 8000
+#define ROLLOVER_FACTOR 0.25f
 #define FSPAN 4
-#define SPB 96
+#define SPB 48
 #define N_BYTES 1
 
 #define NUM_TAPS_ARRAY_SIZE 30
 
-/*static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
+static const float32_t lpIIRCoeffsA[2] = {1.0f, -0.5095254494944288f};
+static const float32_t lpIIRCoeffsB[2] = {0.2452372752527856f,
+                                          0.2452372752527856f};
+
+/*
+static const float32_t lpIIRCoeffsA[3] = {1.000000f, -0.000000f, 0.171573f};
+static const float32_t lpIIRCoeffsB[3] = {0.292893f, 0.585786f, 0.292893f};
+*/
+/*
+static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
     -0.001238f, -0.002175f, -0.000845f, 0.003789f,
     0.007679f,  0.002303f,  -0.013385f, -0.022869f,
     -0.004360f, 0.038050f,  0.059609f,  0.006119f,
@@ -29,22 +39,16 @@
     -0.004360f, -0.022869f, -0.013385f, 0.002303f,
     0.007679f,  0.003789f,  -0.000845f, -0.002175f,
     -0.001238f, 0}; // highpass filter coeffs (15kHz +)*/
-
 static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
-    0.00279261903117354f, -0.00704872099778532f, 0.00522782761055690f,
-    0.00806094259064239f, -0.0241860356361024f,  0.0172911463428934f,
-    0.0235154921508081f,  -0.0610485215400974f,  0.0379882142012305f,
-    0.0455136710707779f,  -0.105344191064127f,   0.0590337115211551f,
-    0.0642021511029681f,  -0.135694004120373f,   0.0697312776608236f,
-    0.0697312776608236f,  -0.135694004120373f,   0.0642021511029681f,
-    0.0590337115211551f,  -0.105344191064127f,   0.0455136710707779f,
-    0.0379882142012305f,  -0.0610485215400974f,  0.0235154921508081f,
-    0.0172911463428934f,  -0.0241860356361024f,  0.00806094259064239f,
-    0.00522782761055690f, -0.00704872099778532f, 0.00279261903117354f};
-// bandpass (15-17)
+    -0.010641f, -0.008923f, 0.012742f, 0.034371f, 0.021928f, -0.026645f,
+    -0.063340f, -0.036643f, 0.041265f, 0.091514f, 0.049803f, -0.053188f,
+    -0.112052f, -0.058111f, 0.059353f, 0.119577f, 0.059353f, -0.058111f,
+    -0.112052f, -0.053188f, 0.049803f, 0.091514f, 0.041265f, -0.036643f,
+    -0.063340f, -0.026645f, 0.021928f, 0.034371f, 0.012742f, -0.008923f,
+    -0.010641f};
 
 static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
-static q15_t temp[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
+static q15_t temp_[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
 // Matched filter and pattern symbol
 static float32_t coeffs[FSPAN * SPB + 1];
 
@@ -58,27 +62,47 @@ static UART_initStruct uart2;
 
 // data storage
 static volatile uint16_t dmaBuffer[SAMPLES * 2];
+
 static q15_t buffer_input[2 * SAMPLES], buffer_filtered[2 * SAMPLES];
 static float32_t buffer_filtered_f32[2 * SAMPLES];
 static volatile uint8_t dataReady;
 
-uint8_t data[1];
-uint16_t idx[2 * SAMPLES / 968];
+uint8_t data[2 * SAMPLES / 624];
+uint16_t idx[2 * SAMPLES / 624];
 uint16_t foundFrames;
+float32_t bufA_I, bufA_Q, bufB_I, bufB_Q;
 
 int main() {
-
   SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, coeffs, FSPAN * SPB + 1);
 
-  BPSK_parameters params = {.Fb = FS / SPB,
-                            .Fs = FS,
-                            .Fc = FC,
-                            .FSpan = FSPAN,
-                            .firCoeffs = coeffs,
-                            .firCoeffsLength = FSPAN * SPB + 1,
-                            .prefixLength = 200,
-                            .frameLength = 768,
-                            .samplesPerBit = SPB};
+  IIR_filter filterI =
+      IIR_filter_init(lpIIRCoeffsA, 2, lpIIRCoeffsB, 2, &bufA_I, &bufB_I);
+  IIR_filter filterQ =
+      IIR_filter_init(lpIIRCoeffsA, 2, lpIIRCoeffsB, 2, &bufA_Q, &bufB_Q);
+
+  costasLoop_parameters costas = {.alpha = 0.1f,
+                                  .beta = 0.1f * 0.1f / 4.0f,
+                                  .LP_filterI = &filterI,
+                                  .LP_filterQ = &filterQ};
+
+  BPSK_parameters BPSK_params = {.Fb = FS / SPB,
+                                 .Fs = FS,
+                                 .Fc = FC,
+                                 .FSpan = FSPAN,
+                                 .matchedFilterCoeffs = coeffs,
+                                 .matchedFilterCoeffsLength = FSPAN * SPB + 1,
+                                 .frameLength = SPB * 8,
+                                 .samplesPerBit = SPB,
+                                 .costas = &costas,
+                                 .differential = false,
+                                 .prefix = false};
+
+  BPSK_init(&BPSK_params);
+
+  int16_t barker[5] = {1, 1, 1, -1, 1};
+  float32_t preamble[5 * SPB];
+
+  BPSK_setPreamble(&BPSK_params, barker, 5, preamble, 5 * SPB);
 
   arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
 
@@ -119,7 +143,7 @@ int main() {
   NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
   adc_startDMA(&adc, (uint32_t *)dmaBuffer, (uint16_t)SAMPLES * 2,
-               DMA_CIRCULAR_MODE);
+               DMA_DIRECT_MODE);
   // dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
   dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
@@ -127,35 +151,72 @@ int main() {
   char buf[40];
   while (1) {
     if (dataReady) {
-      arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15, 30, temp);
-      arm_copy_q15(temp + NUM_TAPS_ARRAY_SIZE - 1, buffer_filtered,
+      arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15, 30, temp_);
+      arm_copy_q15(temp_ + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered,
                    2 * SAMPLES);
 
       arm_q15_to_float(buffer_filtered, buffer_filtered_f32, 2 * SAMPLES);
       float32_t maxVal;
       arm_max_f32(buffer_filtered_f32, 2 * SAMPLES, &maxVal, &idx);
+      uart_sendString(&uart2, "\r\n\r\n Buffer after filter: \r\n");
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
         buffer_filtered_f32[i] = buffer_filtered_f32[i] / maxVal;
-      }
-
-      BPSK_syncInputSignal(&params, buffer_filtered_f32, 2 * SAMPLES, &idx,
-                           &foundFrames);
-
-      for (uint8_t i = 0; i < 1; ++i) {
-        BPSK_demodulateSignal(&params, buffer_filtered_f32 + idx[i], 768, data,
-                              1);
-        if (data[0] == 25) {
-          sprintf(buf, "ok\r\n");
-        } else {
-          sprintf(buf, "nie ok, %d \r\n", data[0]);
-        }
+        sprintf(buf, "%f \r\n", buffer_filtered_f32[i]);
         uart_sendString(&uart2, buf);
       }
 
+      BPSK_syncSignalCarrier(&BPSK_params, buffer_filtered_f32, 2 * SAMPLES);
+
+      float32_t temp[2 * SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1];
+
+      arm_conv_f32(buffer_filtered_f32, 2 * SAMPLES,
+                   BPSK_params.matchedFilterCoeffs,
+                   BPSK_params.matchedFilterCoeffsLength, temp);
+
+      uart_sendString(&uart2, "\r\n\r\n Buffer after conv: \r\n");
+      for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
+        sprintf(
+            buf, "%f \r\n",
+            *(temp + BPSK_params.samplesPerBit * BPSK_params.FSpan / 2 + i));
+        uart_sendString(&uart2, buf);
+      }
+
+      float32_t buffer_[2 * SAMPLES];
+      for (uint16_t i = BPSK_params.samplesPerBit * BPSK_params.FSpan / 2;
+           i < 2 * SAMPLES + BPSK_params.samplesPerBit * BPSK_params.FSpan / 2;
+           ++i) {
+        if (temp[i] > 0) {
+          buffer_[i - BPSK_params.samplesPerBit * BPSK_params.FSpan / 2] = 1.0f;
+        } else {
+          buffer_[i - BPSK_params.samplesPerBit * BPSK_params.FSpan / 2] =
+              -1.0f;
+        }
+      }
+
+      uart_sendString(&uart2, "\r\n\r\n Decode: \r\n");
+      for (uint16_t i = 0; i < 2 * SAMPLES; ++i) {
+        sprintf(buf, "%f \r\n", buffer_[i]);
+        uart_sendString(&uart2, buf);
+      }
+
+      BPSK_findSymbolsStarts(&BPSK_params, buffer_, 2 * SAMPLES, idx,
+                             &foundFrames);
+      uint16_t good = 0;
+      for (uint16_t i = 0; i < foundFrames; ++i) {
+        BPSK_demodulateSignal(&BPSK_params, buffer_ + idx[i],
+                              BPSK_params.frameLength, data + i, 1);
+
+        for (uint16_t j = 0; j < 8; ++j) {
+          if ((data[i] & (1U << j)) == (109 & (1U << j))) {
+            good++;
+          }
+        }
+      }
       dataReady = 0;
     }
   }
 }
+
 void DMA2_Stream4_IRQHandler() {
   char buf[20];
   if (dataReady) {
@@ -171,6 +232,7 @@ void DMA2_Stream4_IRQHandler() {
                           buffer_input[i] = dmaBuffer[i];
                   dataReady = 0x1;
           }
+
   }*/
 
   if (dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
