@@ -44,7 +44,7 @@ add_compile_options(
   -MP
   -gdwarf-2
   -g3
-  -Og
+  -Ofast
 )
 
 add_link_options(
