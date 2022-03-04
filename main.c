@@ -94,6 +94,7 @@ int main() {
                                  .frameLength = SPB * 8,
                                  .samplesPerBit = SPB,
                                  .costas = &costas,
+                                 .gardner = &gardner,
                                  .differential = false,
                                  .prefix = false};
 
