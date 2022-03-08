@@ -156,7 +156,8 @@ int main() {
   char buf[40];
   while (1) {
     if (dataReady) {
-      arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15, 30, temp_);
+      arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15,
+                        NUM_TAPS_ARRAY_SIZE, temp_);
       arm_copy_q15(temp_ + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered,
                    2 * SAMPLES);
 
