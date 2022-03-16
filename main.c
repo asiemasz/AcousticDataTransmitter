@@ -7,8 +7,16 @@
 #include "uart.h"
 
 #include "BPSK.h"
+#include "FIR_filter.h"
 #include "IIR_filter.h"
 #include "SRRC_filter.h"
+
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)                                                   \
+  (byte & 0x80 ? '1' : '0'), (byte & 0x40 ? '1' : '0'),                        \
+      (byte & 0x20 ? '1' : '0'), (byte & 0x10 ? '1' : '0'),                    \
+      (byte & 0x08 ? '1' : '0'), (byte & 0x04 ? '1' : '0'),                    \
+      (byte & 0x02 ? '1' : '0'), (byte & 0x01 ? '1' : '0')
 
 #define SAMPLES 2048
 
@@ -18,37 +26,68 @@
 #define ROLLOVER_FACTOR 0.25f
 #define FSPAN 2
 #define SPB 24
-#define N_BYTES 1
-#define COSTAS_LPF_ORDER 4
+#define COSTAS_LPF_ORDER 7
 
-#define NUM_TAPS_ARRAY_SIZE 31
+#define NUM_TAPS_ARRAY_SIZE 101
 
-static const float32_t lpIIRCoeffsA[4] = {1.0000f, -1.9630f, 1.4000f, -0.3464f};
-static const float32_t lpIIRCoeffsB[4] = {0.0113f, 0.0340f, 0.0340f, 0.0113f};
-
-// static const float32_t lpIIRCoeffsA[2] = {1.0f, -0.5095254494944288f};
-// static const float32_t lpIIRCoeffsB[2] = {0.2452372752527856f,
-//                                          0.2452372752527856f};
-
-/* static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
-    -0.010641f, -0.008923f, 0.012742f, 0.034371f, 0.021928f, -0.026645f,
-    -0.063340f, -0.036643f, 0.041265f, 0.091514f, 0.049803f, -0.053188f,
-    -0.112052f, -0.058111f, 0.059353f, 0.119577f, 0.059353f, -0.058111f,
-    -0.112052f, -0.053188f, 0.049803f, 0.091514f, 0.041265f, -0.036643f,
-    -0.063340f, -0.026645f, 0.021928f, 0.034371f, 0.012742f, -0.008923f,
-    -0.010641f}; */
-static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
-    -0.000319f, -0.000771f, 0.001450f, 0.006804f, 0.006916f, -0.009589f,
-    -0.032568f, -0.025144f, 0.029760f, 0.081756f, 0.052462f, -0.056917f,
-    -0.133670f, -0.074220f, 0.076056f, 0.156148f, 0.076056f, -0.074220f,
-    -0.133670f, -0.056917f, 0.052462f, 0.081756f, 0.029760f, -0.025144f,
-    -0.032568f, -0.009589f, 0.006916f, 0.006804f, 0.001450f, -0.000771f,
-    -0.000319f};
+/* static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] =
+    { // 3kHz width, Kaiser
+        -0.008380f, -0.006318f, 0.008362f,  0.020471f,  0.011854f,
+-0.013133f, -0.027991f, -0.014370f, 0.014195f,  0.026845f,  0.012019f,
+-0.009967f, -0.014530f, -0.003931f, -0.000000f, -0.008949f, -0.009423f,
+0.014759f, 0.040768f,  0.026189f,  -0.032055f, -0.075718f, -0.043476f,
+0.048781f, 0.107312f,  0.057990f,  -0.061683f, -0.129299f, -0.066819f,
+0.068142f, 0.137173f,  0.068142f,  -0.066819f, -0.129299f, -0.061683f,
+0.057990f, 0.107312f,  0.048781f,  -0.043476f, -0.075718f, -0.032055f,
+0.026189f, 0.040768f,  0.014759f,  -0.009423f, -0.008949f, -0.000000f,
+-0.003931f, -0.014530f, -0.009967f, 0.012019f,  0.026845f,  0.014195f,
+-0.014370f, -0.027991f, -0.013133f, 0.011854f,  0.020471f,  0.008362f,
+-0.006318f, -0.008380f}; static const float32_t
+firCoeffs32[NUM_TAPS_ARRAY_SIZE] = { 0.000000f,  -0.000102f, -0.000330f,
+-0.000175f, 0.000122f,  -0.000000f, -0.000191f, 0.000446f,  0.001509f,
+0.001099f,  -0.001459f, -0.003616f, -0.002117f, 0.002355f,  0.004985f,
+0.002501f,  -0.002357f, -0.004081f, -0.001542f, 0.000859f,  -0.000000f,
+-0.001015f, 0.002154f,  0.006749f, 0.004623f,  -0.005837f, -0.013888f,
+-0.007868f, 0.008531f,  0.017703f, 0.008755f,  -0.008172f, -0.014085f,
+-0.005321f, 0.002978f,  -0.000000f, -0.003603f, 0.007802f,  0.025089f,
+0.017757f,  -0.023347f, -0.058400f, -0.035189f, 0.041174f,  0.094010f,
+0.052530f,  -0.057598f, -0.124125f, -0.065790f, 0.068661f,  0.141154f,
+0.068661f,  -0.065790f, -0.124125f, -0.057598f, 0.052530f,  0.094010f,
+0.041174f,  -0.035189f, -0.058400f, -0.023347f, 0.017757f,  0.025089f,
+0.007802f,  -0.003603f, -0.000000f, 0.002978f,  -0.005321f, -0.014085f,
+-0.008172f, 0.008755f,  0.017703f, 0.008531f,  -0.007868f, -0.013888f,
+-0.005837f, 0.004623f,  0.006749f, 0.002154f,  -0.001015f, -0.000000f,
+0.000859f,  -0.001542f, -0.004081f, -0.002357f, 0.002501f,  0.004985f,
+0.002355f,  -0.002117f, -0.003616f, -0.001459f, 0.001099f,  0.001509f,
+0.000446f,  -0.000191f, -0.000000f, 0.000122f,  -0.000175f, -0.000330f,
+-0.000102f, 0.000000f};
+*/
+static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] =
+    { // Czebyszew, 101, 3kHz width, bardzo silnie obcina (ponizej -100 dB)
+        0.000002f,  -0.000004f, -0.000012f, -0.000009f, 0.000012f,  0.000028f,
+        0.000013f,  -0.000007f, 0.000011f,  0.000029f,  -0.000065f, -0.000233f,
+        -0.000184f, 0.000267f,  0.000724f,  0.000461f,  -0.000553f, -0.001246f,
+        -0.000652f, 0.000617f,  0.000991f,  0.000264f,  0.000098f,  0.001203f,
+        0.001251f,  -0.002035f, -0.005851f, -0.003877f, 0.004822f,  0.011352f,
+        0.006334f,  -0.006680f, -0.013183f, -0.005944f, 0.004623f,  0.005070f,
+        -0.000389f, 0.004177f,  0.017636f,  0.014248f,  -0.020357f, -0.053963f,
+        -0.033920f, 0.040932f,  0.095513f,  0.054123f,  -0.059765f, -0.128878f,
+        -0.067938f, 0.070104f,  0.141675f,  0.070104f,  -0.067938f, -0.128878f,
+        -0.059765f, 0.054123f,  0.095513f,  0.040932f,  -0.033920f, -0.053963f,
+        -0.020357f, 0.014248f,  0.017636f,  0.004177f,  -0.000389f, 0.005070f,
+        0.004623f,  -0.005944f, -0.013183f, -0.006680f, 0.006334f,  0.011352f,
+        0.004822f,  -0.003877f, -0.005851f, -0.002035f, 0.001251f,  0.001203f,
+        0.000098f,  0.000264f,  0.000991f,  0.000617f,  -0.000652f, -0.001246f,
+        -0.000553f, 0.000461f,  0.000724f,  0.000267f,  -0.000184f, -0.000233f,
+        -0.000065f, 0.000029f,  0.000011f,  -0.000007f, 0.000013f,  0.000028f,
+        0.000012f,  -0.000009f, -0.000012f, -0.000004f, 0.000002f};
 
 static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
 static q15_t temp_[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
+static float32_t temp_f32[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
+
 // Matched filter and pattern symbol
-static float32_t coeffs[FSPAN * SPB + 1];
+static float32_t matchedCoeffs[FSPAN * SPB + 1];
 
 static q15_t corrRes[2 * SAMPLES * 2 - 1];
 
@@ -63,54 +102,20 @@ static volatile uint16_t dmaBuffer[SAMPLES * 2];
 
 static q15_t buffer_input[2 * SAMPLES], buffer_filtered[2 * SAMPLES];
 static float32_t buffer_filtered_f32[2 * SAMPLES];
+static float32_t buffer_input_f32[2 * SAMPLES];
 static volatile uint8_t dataReady;
 
 uint8_t data[2 * SAMPLES / 312];
 uint16_t idx[2 * SAMPLES / 312];
 uint16_t foundFrames;
-float32_t bufA_I[COSTAS_LPF_ORDER - 1], bufA_Q[COSTAS_LPF_ORDER - 1],
-    bufB_I[COSTAS_LPF_ORDER - 1], bufB_Q[COSTAS_LPF_ORDER - 1];
+
+float32_t buffer_LP_costas_I[COSTAS_LPF_ORDER],
+    buffer_LP_costas_Q[COSTAS_LPF_ORDER];
+float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {0.117181f, 0.142181f, 0.158530f,
+                                           0.164215f, 0.158530f, 0.142181f,
+                                           0.117181f};
 
 int main() {
-  SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, coeffs, FSPAN * SPB + 1);
-
-  IIR_filter filterI =
-      IIR_filter_init(lpIIRCoeffsA, COSTAS_LPF_ORDER, lpIIRCoeffsB,
-                      COSTAS_LPF_ORDER, bufA_I, bufB_I);
-  IIR_filter filterQ =
-      IIR_filter_init(lpIIRCoeffsA, COSTAS_LPF_ORDER, lpIIRCoeffsB,
-                      COSTAS_LPF_ORDER, bufA_Q, bufB_Q);
-
-  costasLoop_parameters costas = {.alpha = 0.1f,
-                                  .beta = 0.1f * 0.1f / 40.0f,
-                                  .LP_filterI = &filterI,
-                                  .LP_filterQ = &filterQ};
-
-  gardnerTimingRecovery_parameters gardner = {.loop_gain = 0.35,
-                                              .max_error = 5};
-
-  int8_t barker[5] = {1, 1, 1, -1, 1};
-  float32_t preamble[5 * SPB];
-
-  BPSK_parameters BPSK_params = {.Fb = FS / SPB,
-                                 .Fs = FS,
-                                 .Fc = FC,
-                                 .FSpan = FSPAN,
-                                 .matchedFilterCoeffs = coeffs,
-                                 .matchedFilterCoeffsLength = FSPAN * SPB + 1,
-                                 .frameLength = 8,
-                                 .samplesPerBit = SPB,
-                                 .costas = &costas,
-                                 .gardner = &gardner,
-                                 .differential = false,
-                                 .preambleCode = barker,
-                                 .preambleCodeLength = 5,
-                                 .prefix = false};
-
-  BPSK_reset(&BPSK_params);
-
-  arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
-
   // Peripherals initialization
   uart2.baudRate = 115200;
   uart2.mode = UART_TRANSMITTER_ONLY;
@@ -152,21 +157,66 @@ int main() {
   // dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
   dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
+  // Demodulator system components initialization
+  SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, matchedCoeffs,
+                    FSPAN * SPB + 1);
+
+  FIR_filter filterI =
+      FIR_filter_init(matchedCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_I);
+  FIR_filter filterQ =
+      FIR_filter_init(matchedCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_Q);
+
+  costasLoop_parameters costas = {.alpha = 0.2f,
+                                  .beta = 0.2f * 0.2f / 4.0f,
+                                  .LP_filterI = &filterI,
+                                  .LP_filterQ = &filterQ};
+
+  gardnerTimingRecovery_parameters gardner = {.loop_gain = 0.35,
+                                              .max_error = 10};
+
+  int8_t barker[5] = {1, 1, 1, -1, 1};
+  float32_t preamble[5 * SPB];
+
+  BPSK_parameters BPSK_params = {
+      .Fb = FS / SPB,
+      .Fs = FS,
+      .Fc = FC,
+      .FSpan = FSPAN,
+      .matchedFilterCoeffs = matchedCoeffs,
+      .matchedFilterCoeffsLength = FSPAN * SPB + 1,
+      .frameLength = 8,
+      .samplesPerBit = SPB,
+      .costas = &costas,
+      .gardner = &gardner,
+      .preambleCode = barker,
+      .preambleCodeLength = 5,
+  };
+
+  BPSK_reset(&BPSK_params);
+
+  arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
+
   timer_start(&tim2);
+
   char buf[40];
   while (1) {
     if (dataReady) {
-      arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15,
-                        NUM_TAPS_ARRAY_SIZE, temp_);
-      arm_copy_q15(temp_ + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered,
-                   2 * SAMPLES);
+      /*  arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15,
+                          NUM_TAPS_ARRAY_SIZE, temp_);
+        arm_copy_q15(temp_ + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered,
+                     2 * SAMPLES);
 
-      arm_q15_to_float(buffer_filtered, buffer_filtered_f32, 2 * SAMPLES);
+        arm_q15_to_float(buffer_filtered, buffer_filtered_f32, 2 * SAMPLES); */
+
+      arm_conv_f32(buffer_input_f32, 2 * SAMPLES, firCoeffs32,
+                   NUM_TAPS_ARRAY_SIZE, temp_f32);
+      arm_copy_f32(temp_f32 + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered_f32,
+                   2 * SAMPLES);
       float32_t maxVal;
       arm_max_f32(buffer_filtered_f32, 2 * SAMPLES, &maxVal, &idx);
       uart_sendString(&uart2, "\r\n\r\n Buffer after filter: \r\n");
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
-        buffer_filtered_f32[i] = buffer_filtered_f32[i] / maxVal;
+        buffer_filtered_f32[i] = buffer_filtered_f32[i] / maxVal * 1.5f;
         sprintf(buf, "%f \r\n", buffer_filtered_f32[i]);
         uart_sendString(&uart2, buf);
       }
@@ -213,7 +263,8 @@ int main() {
 
       uart_sendString(&uart2, "\r\n\r\n Data: \r\n");
       for (uint16_t i = 0; i < foundFrames; ++i) {
-        sprintf(buf, "%d\r\n", out_data[i]);
+        sprintf(buf, "%d %c%c%c%c%c%c%c%c \r\n", out_data[i],
+                BYTE_TO_BINARY(out_data[i]));
         uart_sendString(&uart2, buf);
       }
       dataReady = 0;
@@ -243,8 +294,12 @@ void DMA2_Stream4_IRQHandler() {
   if (dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
     dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
     if (!dataReady) {
+      uart_sendString(&uart2, "\r\n Buffer ADC: \r\n");
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
         buffer_input[i] = dmaBuffer[i];
+        buffer_input_f32[i] = (float32_t)dmaBuffer[i] / 4096.0f * 3.3f;
+        sprintf(buf, "%f \r\n", buffer_input_f32[i]);
+        uart_sendString(&uart2, buf);
       }
       dataReady = 0x1;
     }
