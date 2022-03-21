@@ -26,11 +26,11 @@
 #define ROLLOVER_FACTOR 0.25f
 #define FSPAN 2
 #define SPB 24
-#define COSTAS_LPF_ORDER 7
+#define COSTAS_LPF_ORDER 5
 
 #define NUM_TAPS_ARRAY_SIZE 41
 
-#define DEBUG
+//#define DEBUG
 
 /* static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] =
     { // 3kHz width, Kaiser
@@ -95,7 +95,14 @@ static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
     0.009481f,  -0.012246f, -0.026630f, -0.013403f, 0.013841f,
 };
 
-static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
+/*
+float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {0.117181f, 0.142181f, 0.158530f,
+                                       0.164215f, 0.158530f, 0.142181f,
+                                       0.117181f}; */
+
+static const float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {
+    0.086661f, 0.090540f, 0.091857f, 0.090540f, 0.086661f};
+
 static q15_t temp_[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
 static float32_t temp_f32[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
 static volatile uint16_t time = 0;
@@ -103,33 +110,23 @@ static uint16_t start, end;
 // Matched filter and pattern symbol
 static float32_t matchedCoeffs[FSPAN * SPB + 1];
 
-static q15_t corrRes[2 * SAMPLES * 2 - 1];
-
-// Peripherals
+// Peripherals structs
 static ADC_initStruct adc;
 static TIMER_initStruct tim2;
 static ADC_channel chan0;
 static UART_initStruct uart2;
 
-// data storage
+// Data storage
 static volatile uint16_t dmaBuffer[SAMPLES * 2];
-
-static q15_t buffer_input[2 * SAMPLES], buffer_filtered[2 * SAMPLES];
 static float32_t buffer_filtered_f32[2 * SAMPLES];
 static float32_t buffer_input_f32[2 * SAMPLES];
 static volatile uint8_t dataReady;
 
-uint8_t data[2 * SAMPLES / 312];
-uint16_t idx[2 * SAMPLES / 312];
-
 float32_t buffer_LP_costas_I[COSTAS_LPF_ORDER],
     buffer_LP_costas_Q[COSTAS_LPF_ORDER];
-float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {0.117181f, 0.142181f, 0.158530f,
-                                           0.164215f, 0.158530f, 0.142181f,
-                                           0.117181f};
 
 int main() {
-  // Peripherals initialization
+  /// Peripherals initialization ///
   uart2.baudRate = 115200;
   uart2.mode = UART_TRANSMITTER_ONLY;
   uart2.oversampling = UART_OVERSAMPLING_BY_16;
@@ -175,7 +172,7 @@ int main() {
   // dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
   dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
-  // Demodulator system components initialization
+  /// Demodulator system components initialization ///
   SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, matchedCoeffs,
                     FSPAN * SPB + 1);
 
@@ -192,8 +189,7 @@ int main() {
   gardnerTimingRecovery_parameters gardner = {.loop_gain = 0.35,
                                               .max_error = 10};
 
-  int8_t barker[5] = {1, 1, 1, -1, 1};
-  float32_t preamble[5 * SPB];
+  const int8_t barker[5] = {1, 1, 1, -1, 1};
 
   BPSK_parameters BPSK_params = {
       .Fb = FS / SPB,
@@ -212,8 +208,6 @@ int main() {
 
   BPSK_reset(&BPSK_params);
 
-  arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
-
   SysTick_Config(84000000 / 1000);
 
   char buf[40];
@@ -228,7 +222,8 @@ int main() {
       arm_copy_f32(temp_f32 + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered_f32,
                    2 * SAMPLES);
       float32_t maxVal;
-      arm_max_f32(buffer_filtered_f32, 2 * SAMPLES, &maxVal, &idx);
+      uint16_t maxIdx;
+      arm_max_f32(buffer_filtered_f32, 2 * SAMPLES, &maxVal, &maxIdx);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Buffer after filter: \r\n ");
 #endif
@@ -250,7 +245,7 @@ int main() {
                    BPSK_params.matchedFilterCoeffsLength, temp);
 
       arm_max_f32(temp, 2 * SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1,
-                  &maxVal, &idx);
+                  &maxVal, &maxIdx);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Buffer after conv: \r\n");
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
@@ -267,6 +262,7 @@ int main() {
                               BPSK_params.samplesPerBit * BPSK_params.FSpan / 2,
                           2 * SAMPLES, buffer_, 2 * SAMPLES / SPB);
 
+      uint16_t idx[2 * SAMPLES / 312];
       BPSK_findSymbolsStarts_decimated(&BPSK_params, buffer_, 2 * SAMPLES / SPB,
                                        idx, &foundFrames);
 #ifdef DEBUG
@@ -290,7 +286,7 @@ int main() {
 #endif
       uint16_t correct = 0;
       for (uint8_t i = 0; i < foundFrames; i++) {
-        if (out_data[i] == 109 || out_data[i] == 222 | out_data[i] == 11)
+        if (out_data[i] == 109 || out_data[i] == 222 || out_data[i] == 11)
           correct++;
       }
 
