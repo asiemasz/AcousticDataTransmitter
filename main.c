@@ -28,7 +28,9 @@
 #define SPB 24
 #define COSTAS_LPF_ORDER 7
 
-#define NUM_TAPS_ARRAY_SIZE 101
+#define NUM_TAPS_ARRAY_SIZE 41
+
+#define DEBUG
 
 /* static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] =
     { // 3kHz width, Kaiser
@@ -61,7 +63,7 @@ firCoeffs32[NUM_TAPS_ARRAY_SIZE] = { 0.000000f,  -0.000102f, -0.000330f,
 0.002355f,  -0.002117f, -0.003616f, -0.001459f, 0.001099f,  0.001509f,
 0.000446f,  -0.000191f, -0.000000f, 0.000122f,  -0.000175f, -0.000330f,
 -0.000102f, 0.000000f};
-*/
+
 static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] =
     { // Czebyszew, 101, 3kHz width, bardzo silnie obcina (ponizej -100 dB)
         0.000002f,  -0.000004f, -0.000012f, -0.000009f, 0.000012f,  0.000028f,
@@ -81,11 +83,23 @@ static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] =
         -0.000553f, 0.000461f,  0.000724f,  0.000267f,  -0.000184f, -0.000233f,
         -0.000065f, 0.000029f,  0.000011f,  -0.000007f, 0.000013f,  0.000028f,
         0.000012f,  -0.000009f, -0.000012f, -0.000004f, 0.000002f};
+*/
+
+static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
+    0.013841f,  -0.013403f, -0.026630f, -0.012246f, 0.009481f,  0.012862f,
+    0.002252f,  0.002807f,  0.017553f,  0.015587f,  -0.022095f, -0.059555f,
+    -0.037635f, 0.044112f,  0.102915f,  0.058158f,  -0.062931f, -0.135504f,
+    -0.071261f, 0.073017f,  0.147602f,  0.073017f,  -0.071261f, -0.135504f,
+    -0.062931f, 0.058158f,  0.102915f,  0.044112f,  -0.037635f, -0.059555f,
+    -0.022095f, 0.015587f,  0.017553f,  0.002807f,  0.002252f,  0.012862f,
+    0.009481f,  -0.012246f, -0.026630f, -0.013403f, 0.013841f,
+};
 
 static q15_t firCoeffs_q15[NUM_TAPS_ARRAY_SIZE];
 static q15_t temp_[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
 static float32_t temp_f32[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
-
+static volatile uint16_t time = 0;
+static uint16_t start, end;
 // Matched filter and pattern symbol
 static float32_t matchedCoeffs[FSPAN * SPB + 1];
 
@@ -107,7 +121,6 @@ static volatile uint8_t dataReady;
 
 uint8_t data[2 * SAMPLES / 312];
 uint16_t idx[2 * SAMPLES / 312];
-uint16_t foundFrames;
 
 float32_t buffer_LP_costas_I[COSTAS_LPF_ORDER],
     buffer_LP_costas_Q[COSTAS_LPF_ORDER];
@@ -142,7 +155,7 @@ int main() {
   tim2.tim = TIM2;
   tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
   tim2.prescaler = 1;
-  tim2.autoReload = 1750;
+  tim2.autoReload = FSystem / FS;
 
   timer_init(&tim2);
   timer_selectTRGOUTEvent(&tim2, TIMER_TRGOUT_EVENT_UPDATE);
@@ -152,8 +165,13 @@ int main() {
   adc_configureChannel(&adc, &chan0, 1, ADC_SAMPLING_TIME_144CYCL);
   NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
+#ifndef DEBUG
+  adc_startDMA(&adc, (uint32_t *)dmaBuffer, (uint16_t)SAMPLES * 2,
+               DMA_CIRCULAR_MODE);
+#else
   adc_startDMA(&adc, (uint32_t *)dmaBuffer, (uint16_t)SAMPLES * 2,
                DMA_DIRECT_MODE);
+#endif
   // dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
   dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
@@ -196,17 +214,14 @@ int main() {
 
   arm_float_to_q15(firCoeffs32, firCoeffs_q15, NUM_TAPS_ARRAY_SIZE);
 
-  timer_start(&tim2);
+  SysTick_Config(84000000 / 1000);
 
   char buf[40];
+  timer_start(&tim2);
+
   while (1) {
     if (dataReady) {
-      /*  arm_conv_fast_q15(buffer_input, 2 * SAMPLES, firCoeffs_q15,
-                          NUM_TAPS_ARRAY_SIZE, temp_);
-        arm_copy_q15(temp_ + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered,
-                     2 * SAMPLES);
-
-        arm_q15_to_float(buffer_filtered, buffer_filtered_f32, 2 * SAMPLES); */
+      uint16_t foundFrames = 0U;
 
       arm_conv_f32(buffer_input_f32, 2 * SAMPLES, firCoeffs32,
                    NUM_TAPS_ARRAY_SIZE, temp_f32);
@@ -214,14 +229,19 @@ int main() {
                    2 * SAMPLES);
       float32_t maxVal;
       arm_max_f32(buffer_filtered_f32, 2 * SAMPLES, &maxVal, &idx);
-      uart_sendString(&uart2, "\r\n\r\n Buffer after filter: \r\n");
+#ifdef DEBUG
+      uart_sendString(&uart2, "\r\n\r\n Buffer after filter: \r\n ");
+#endif
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
         buffer_filtered_f32[i] = buffer_filtered_f32[i] / maxVal * 1.5f;
+#ifdef DEBUG
         sprintf(buf, "%f \r\n", buffer_filtered_f32[i]);
         uart_sendString(&uart2, buf);
+#endif
       }
 
-      BPSK_carrierRecovery(&BPSK_params, buffer_filtered_f32, 2 * SAMPLES);
+      BPSK_carrierRecovery(&BPSK_params, buffer_filtered_f32,
+                           2 * SAMPLES); // to dużo czasu!
 
       float32_t temp[2 * SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1];
 
@@ -231,16 +251,15 @@ int main() {
 
       arm_max_f32(temp, 2 * SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1,
                   &maxVal, &idx);
-
+#ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Buffer after conv: \r\n");
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
-        temp[BPSK_params.samplesPerBit * BPSK_params.FSpan / 2 + i] /= maxVal;
         sprintf(
             buf, "%f \r\n",
             *(temp + BPSK_params.samplesPerBit * BPSK_params.FSpan / 2 + i));
         uart_sendString(&uart2, buf);
       }
-
+#endif
       int8_t buffer_[2 * SAMPLES / SPB];
 
       BPSK_timingRecovery(&BPSK_params,
@@ -250,26 +269,36 @@ int main() {
 
       BPSK_findSymbolsStarts_decimated(&BPSK_params, buffer_, 2 * SAMPLES / SPB,
                                        idx, &foundFrames);
-
-      uart_sendString(&uart2, "\r\n\r\n Decode: \r\n");
+#ifdef DEBUG
+      uart_sendString(&uart2, "\r\n\r\n Decode : \r\n ");
       for (uint16_t i = 0; i < 2 * SAMPLES / SPB; ++i) {
         sprintf(buf, "%d \r\n", buffer_[i]);
         uart_sendString(&uart2, buf);
       }
+#endif
       uint8_t out_data[foundFrames];
 
       BPSK_demodulateSignal_decimated(&BPSK_params, buffer_, 2 * SAMPLES / SPB,
                                       idx, foundFrames, out_data, foundFrames);
-
+#ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Data: \r\n");
       for (uint16_t i = 0; i < foundFrames; ++i) {
         sprintf(buf, "%d %c%c%c%c%c%c%c%c \r\n", out_data[i],
                 BYTE_TO_BINARY(out_data[i]));
         uart_sendString(&uart2, buf);
       }
+#endif
+      uint16_t correct = 0;
+      for (uint8_t i = 0; i < foundFrames; i++) {
+        if (out_data[i] == 109 || out_data[i] == 222 | out_data[i] == 11)
+          correct++;
+      }
+
       dataReady = 0;
+      end = time - start;
+      sprintf(buf, "\r\n %ld %d %d\r\n", time, correct, foundFrames);
+      uart_sendString(&uart2, buf);
     }
-    //   uart_sendString(&uart2, "ok");
   }
 }
 
@@ -278,6 +307,10 @@ void DMA2_Stream4_IRQHandler() {
   if (dataReady) {
     sprintf(buf, "Error! Overrun \r\n");
     uart_sendString(&uart2, buf);
+    __DMB();
+    __DMB();
+    __DMB();
+
     Default_Handler();
   }
 
@@ -294,14 +327,17 @@ void DMA2_Stream4_IRQHandler() {
   if (dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
     dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
     if (!dataReady) {
-      uart_sendString(&uart2, "\r\n Buffer ADC: \r\n");
+      //  uart_sendString(&uart2, "\r\n Buffer ADC: \r\n");
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
-        buffer_input[i] = dmaBuffer[i];
+        // buffer_input[i] = dmaBuffer[i];
         buffer_input_f32[i] = (float32_t)dmaBuffer[i] / 4096.0f * 3.3f;
-        sprintf(buf, "%f \r\n", buffer_input_f32[i]);
-        uart_sendString(&uart2, buf);
+        //   sprintf(buf, "%f \r\n", buffer_input_f32[i]);
+        //   uart_sendString(&uart2, buf);
       }
       dataReady = 0x1;
+      start = time;
     }
   }
 }
+
+void SysTick_Handler(void) { time++; }
