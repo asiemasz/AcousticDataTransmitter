@@ -18,7 +18,6 @@ add_compile_options(
 )
 
 add_compile_definitions(
-  DEBUG
 )
 
 include_directories(
@@ -34,6 +33,7 @@ add_compile_definitions(
   STM32F401xE
   ARM_MATH_CM4
   __FPU_PRESENT=1U
+  __FPU_USED=1U
 )
 
 file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
