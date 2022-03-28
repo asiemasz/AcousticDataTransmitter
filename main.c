@@ -101,7 +101,7 @@ float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {0.117181f, 0.142181f, 0.158530f,
                                        0.117181f}; */
 
 static const float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {
-    0.086661f, 0.090540f, 0.091857f, 0.090540f, 0.086661f};
+    0.072255f, 0.074308f, 0.075000f, 0.074308f, 0.072255f};
 
 static q15_t temp_[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
 static float32_t temp_f32[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
@@ -177,9 +177,9 @@ int main() {
                     FSPAN * SPB + 1);
 
   FIR_filter filterI =
-      FIR_filter_init(matchedCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_I);
+      FIR_filter_init(lpFIRCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_I);
   FIR_filter filterQ =
-      FIR_filter_init(matchedCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_Q);
+      FIR_filter_init(lpFIRCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_Q);
 
   costasLoop_parameters costas = {.alpha = 0.2f,
                                   .beta = 0.2f * 0.2f / 4.0f,
