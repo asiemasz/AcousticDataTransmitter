@@ -181,8 +181,8 @@ int main() {
   FIR_filter filterQ =
       FIR_filter_init(lpFIRCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_Q);
 
-  costasLoop_parameters costas = {.alpha = 0.2f,
-                                  .beta = 0.2f * 0.2f / 4.0f,
+  costasLoop_parameters costas = {.Kp = 0.25f,
+                                  .Ki = 0.25f * 0.25f / 4.0f,
                                   .LP_filterI = &filterI,
                                   .LP_filterQ = &filterQ};
 
