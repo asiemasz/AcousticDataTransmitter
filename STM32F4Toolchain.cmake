@@ -38,6 +38,9 @@ add_compile_options(
   ${ARM_OPTIONS}
   -fmessage-length=0
   -funsigned-char
+  -fsingle-precision-constant
+  -Wdouble-promotion
+  -ffast-math
   -ffunction-sections
   -fdata-sections
   -MMD
