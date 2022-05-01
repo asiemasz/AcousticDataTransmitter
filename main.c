@@ -155,17 +155,17 @@ int main() {
     if (dataReady) {
       uint16_t foundFrames = 0U;
 
-      arm_conv_f32(buffer_input_f32, 2 * SAMPLES, firCoeffs32,
-                   NUM_TAPS_ARRAY_SIZE, temp_f32);
+      arm_conv_f32(buffer_input_f32, SAMPLES, firCoeffs32, NUM_TAPS_ARRAY_SIZE,
+                   temp_f32);
       arm_copy_f32(temp_f32 + NUM_TAPS_ARRAY_SIZE / 2, buffer_filtered_f32,
-                   2 * SAMPLES);
+                   SAMPLES);
       float32_t maxVal;
       uint16_t maxIdx;
-      arm_max_f32(buffer_filtered_f32, 2 * SAMPLES, &maxVal, &maxIdx);
+      arm_max_f32(buffer_filtered_f32, SAMPLES, &maxVal, &maxIdx);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Buffer after filter: \r\n ");
 #endif
-      for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
+      for (uint16_t i = 0; i < SAMPLES; i++) {
         buffer_filtered_f32[i] = buffer_filtered_f32[i] / maxVal * 1.5f;
 #ifdef DEBUG
         sprintf(buf, "%f \r\n", buffer_filtered_f32[i]);
@@ -173,16 +173,16 @@ int main() {
 #endif
       }
 
-      BPSK_carrierRecovery(&BPSK_params, buffer_filtered_f32,
-                           2 * SAMPLES); // to dużo czasu!
+      float32_t locked =
+          BPSK_carrierRecovery(&BPSK_params, buffer_filtered_f32, SAMPLES);
 
-      float32_t temp[2 * SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1];
+      float32_t temp[SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1];
 
-      arm_conv_f32(buffer_filtered_f32, 2 * SAMPLES,
+      arm_conv_f32(buffer_filtered_f32, SAMPLES,
                    BPSK_params.matchedFilterCoeffs,
                    BPSK_params.matchedFilterCoeffsLength, temp);
 
-      arm_max_f32(temp, 2 * SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1,
+      arm_max_f32(temp, SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1,
                   &maxVal, &maxIdx);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Buffer after conv: \r\n");
@@ -193,15 +193,15 @@ int main() {
         uart_sendString(&uart2, buf);
       }
 #endif
-      int8_t buffer_[2 * SAMPLES / SPB];
+      int8_t buffer_[SAMPLES / SPB + 1];
 
       BPSK_timingRecovery(&BPSK_params,
                           temp +
                               BPSK_params.samplesPerBit * BPSK_params.FSpan / 2,
-                          2 * SAMPLES, buffer_, 2 * SAMPLES / SPB);
+                          SAMPLES, buffer_, SAMPLES / SPB + 1);
 
-      uint16_t idx[2 * SAMPLES / 312];
-      BPSK_findSymbolsStarts_decimated(&BPSK_params, buffer_, 2 * SAMPLES / SPB,
+      uint16_t idx[SAMPLES / 312];
+      BPSK_findSymbolsStarts_decimated(&BPSK_params, buffer_, SAMPLES / SPB,
                                        idx, &foundFrames);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Decode : \r\n ");
@@ -230,7 +230,7 @@ int main() {
 
       dataReady = 0;
       end = time - start;
-      sprintf(buf, "\r\n %ld %d %d\r\n", time, correct, foundFrames);
+      sprintf(buf, "\r\n %ld %d %d %f\r\n", time, correct, foundFrames, locked);
       uart_sendString(&uart2, buf);
     }
   }
@@ -248,25 +248,27 @@ void DMA2_Stream4_IRQHandler() {
     Default_Handler();
   }
 
-  /*if(dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER)) {
-          dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER);
-          if(!dataReady) {
-                  for(uint16_t i = 0; i < SAMPLES; i++)
-                          buffer_input[i] = dmaBuffer[i];
-                  dataReady = 0x1;
-          }
-
-  }*/
+  if (dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER)) {
+    dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_HALF_TRANSFER);
+    if (!dataReady) {
+      for (uint16_t i = 0; i < SAMPLES; i++)
+        buffer_input_f32[i] = (float32_t)dmaBuffer[i] / 4096.0f * 3.3f;
+      dataReady = 0x1;
+    }
+  }
 
   if (dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
     dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
     if (!dataReady) {
-      //  uart_sendString(&uart2, "\r\n Buffer ADC: \r\n");
-      for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
-        // buffer_input[i] = dmaBuffer[i];
+#ifdef DEBUG
+      uart_sendString(&uart2, "\r\n Buffer ADC: \r\n");
+#endif
+      for (uint16_t i = SAMPLES; i < 2 * SAMPLES; i++) {
         buffer_input_f32[i] = (float32_t)dmaBuffer[i] / 4096.0f * 3.3f;
-        //   sprintf(buf, "%f \r\n", buffer_input_f32[i]);
-        //   uart_sendString(&uart2, buf);
+#ifdef DEBUG
+        sprintf(buf, "%f \r\n", buffer_input_f32[i]);
+        uart_sendString(&uart2, buf);
+#endif
       }
       dataReady = 0x1;
       start = time;
