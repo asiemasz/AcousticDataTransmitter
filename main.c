@@ -54,10 +54,30 @@ static uint16_t start, end;
 static float32_t matchedCoeffs[FSPAN * SPB + 1];
 
 // Peripherals structs
-static ADC_initStruct adc;
-static TIMER_initStruct tim2;
-static ADC_channel chan0;
-static UART_initStruct uart2;
+static const ADC_initStruct adc = {
+    .clockPrescaller = ADC_CLOCK_PRESCALLER_4,
+    .continuous = ADC_CONTINUOUS_CONVERSION_MODE_DISABLED,
+    .ext_mode = ADC_EXTERNAL_TRIG_MODE_RISING_EDGE,
+    .ext_trig = ADC_EXTERNAL_TRIG_TIMER2_TRGO,
+    .resolution = ADC_RESOLUTION_12,
+    .dma = ADC_DMA_CONTINUOUS_REQUEST_ENABLED,
+    .conversionNumber = 1};
+
+static const TIMER_initStruct tim2 = {.tim = TIM2,
+                                      .direction = TIMER_COUNTER_DIRECTION_DOWN,
+                                      .prescaler = 1,
+                                      .autoReload = FSystem / FS};
+
+static ADC_channel chan0 = {.number = 1, .GPIO_pin = PIN1, .GPIO_port = GPIOA};
+
+static const UART_initStruct uart2 = {.baudRate = 115200,
+                                      .mode = UART_TRANSMITTER_ONLY,
+                                      .oversampling = UART_OVERSAMPLING_BY_16,
+                                      .parityControl =
+                                          UART_PARITY_CONTROL_DISABLED,
+                                      .stopBits = UART_STOP_BITS_1,
+                                      .wordLength = UART_WORD_LENGTH_8,
+                                      .uart = USART2};
 
 // Data storage
 static volatile uint16_t dmaBuffer[SAMPLES * 2];
@@ -70,32 +90,7 @@ float32_t buffer_LP_costas_I[COSTAS_LPF_ORDER],
 
 int main() {
   /// Peripherals initialization ///
-  uart2.baudRate = 115200;
-  uart2.mode = UART_TRANSMITTER_ONLY;
-  uart2.oversampling = UART_OVERSAMPLING_BY_16;
-  uart2.parityControl = UART_PARITY_CONTROL_DISABLED;
-  uart2.stopBits = UART_STOP_BITS_1;
-  uart2.wordLength = UART_WORD_LENGTH_8;
-  uart2.uart = USART2;
-
   uart_init(&uart2);
-
-  adc.clockPrescaller = ADC_CLOCK_PRESCALLER_4;
-  adc.continuous = ADC_CONTINUOUS_CONVERSION_MODE_DISABLED;
-  adc.ext_mode = ADC_EXTERNAL_TRIG_MODE_RISING_EDGE;
-  adc.ext_trig = ADC_EXTERNAL_TRIG_TIMER2_TRGO;
-  adc.resolution = ADC_RESOLUTION_12;
-  adc.dma = ADC_DMA_CONTINUOUS_REQUEST_ENABLED;
-  adc.conversionNumber = 1;
-
-  chan0.number = 1;
-  chan0.GPIO_pin = PIN1;
-  chan0.GPIO_port = GPIOA;
-
-  tim2.tim = TIM2;
-  tim2.direction = TIMER_COUNTER_DIRECTION_DOWN;
-  tim2.prescaler = 1;
-  tim2.autoReload = FSystem / FS;
 
   timer_init(&tim2);
   timer_selectTRGOUTEvent(&tim2, TIMER_TRGOUT_EVENT_UPDATE);
