@@ -107,7 +107,7 @@ int main() {
   adc_startDMA(&adc, (uint32_t *)dmaBuffer, (uint16_t)SAMPLES * 2,
                DMA_DIRECT_MODE);
 #endif
-  // dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
+  dma_streamITEnable(DMA2_Stream4, DMA_IT_HALF_TRANSFER);
   dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
   /// Demodulator system components initialization ///
@@ -201,8 +201,8 @@ int main() {
                           SAMPLES, buffer_, SAMPLES / SPB + 1);
 
       uint16_t idx[SAMPLES / 312];
-      BPSK_findSymbolsStarts_decimated(&BPSK_params, buffer_, SAMPLES / SPB,
-                                       idx, &foundFrames);
+      BPSK_findSymbolsStarts(&BPSK_params, buffer_, SAMPLES / SPB, idx,
+                             &foundFrames);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Decode : \r\n ");
       for (uint16_t i = 0; i < 2 * SAMPLES / SPB; ++i) {
@@ -212,8 +212,8 @@ int main() {
 #endif
       uint8_t out_data[foundFrames];
 
-      BPSK_demodulateSignal_decimated(&BPSK_params, buffer_, 2 * SAMPLES / SPB,
-                                      idx, foundFrames, out_data, foundFrames);
+      BPSK_demodulateSignal(&BPSK_params, buffer_, 2 * SAMPLES / SPB, idx,
+                            foundFrames, out_data, foundFrames);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Data: \r\n");
       for (uint16_t i = 0; i < foundFrames; ++i) {
