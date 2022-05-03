@@ -81,8 +81,8 @@ static const UART_initStruct uart2 = {.baudRate = 115200,
 
 // Data storage
 static volatile uint16_t dmaBuffer[SAMPLES * 2];
-static float32_t buffer_filtered_f32[2 * SAMPLES];
-static float32_t buffer_input_f32[2 * SAMPLES];
+static float32_t buffer_filtered_f32[SAMPLES];
+static float32_t buffer_input_f32[SAMPLES];
 static volatile uint8_t dataReady;
 
 float32_t buffer_LP_costas_I[COSTAS_LPF_ORDER],
@@ -111,8 +111,8 @@ int main() {
   dma_streamITEnable(DMA2_Stream4, DMA_IT_TRANSFER_COMPLETE);
 
   /// Demodulator system components initialization ///
-  SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, matchedCoeffs,
-                    FSPAN * SPB + 1);
+  SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, matchedCoeffs, FSPAN * SPB + 1,
+                    0.5f);
 
   FIR_filter filterI =
       FIR_filter_init(lpFIRCoeffs, COSTAS_LPF_ORDER, buffer_LP_costas_I);
@@ -200,7 +200,7 @@ int main() {
                               BPSK_params.samplesPerBit * BPSK_params.FSpan / 2,
                           SAMPLES, buffer_, SAMPLES / SPB + 1);
 
-      uint16_t idx[SAMPLES / 312];
+      uint16_t idx[SAMPLES / 312 + 2];
       BPSK_findSymbolsStarts(&BPSK_params, buffer_, SAMPLES / SPB, idx,
                              &foundFrames);
 #ifdef DEBUG
@@ -264,7 +264,8 @@ void DMA2_Stream4_IRQHandler() {
       uart_sendString(&uart2, "\r\n Buffer ADC: \r\n");
 #endif
       for (uint16_t i = SAMPLES; i < 2 * SAMPLES; i++) {
-        buffer_input_f32[i] = (float32_t)dmaBuffer[i] / 4096.0f * 3.3f;
+        buffer_input_f32[i - SAMPLES] =
+            (float32_t)dmaBuffer[i] / 4096.0f * 3.3f;
 #ifdef DEBUG
         sprintf(buf, "%f \r\n", buffer_input_f32[i]);
         uart_sendString(&uart2, buf);
