@@ -210,7 +210,7 @@ int main() {
         uart_sendString(&uart2, buf);
       }
 #endif
-      uint8_t out_data[foundFrames];
+      uint8_t out_data[foundFrames + 1];
 
       BPSK_demodulateSignal(&BPSK_params, buffer_, 2 * SAMPLES / SPB, idx,
                             foundFrames, out_data, foundFrames);
