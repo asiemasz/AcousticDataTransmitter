@@ -99,11 +99,10 @@ volatile uint16_t val;
 volatile uint32_t i = 0;
 volatile uint32_t j = 0;
 
-float32_t coeffs[FSPAN * SPB + 1];
-static float32_t
-    modulated_signal[SPB * (DATA_FRAME_LENGTH + PREAMBLE_LENGTH) * 10] = {0};
-
 int main() {
+  float32_t coeffs[FSPAN * SPB + 1];
+  float32_t modulated_signal[SPB * (DATA_FRAME_LENGTH + PREAMBLE_LENGTH)] = {0};
+
   initRandomGenerator(2137);
 
   SRRC_getFIRCoeffs(FSPAN, SPB, ROLLOVER_FACTOR, coeffs, FSPAN * SPB + 1, 3.7f);
@@ -130,20 +129,25 @@ int main() {
 
   char buf[20];
 
-  uint8_t random_byte[10] = {203U}; // generateRandomFromRange(0, 255);
-  arm_fill_q7(203, random_byte, 10);
-  BPSK_getOutputSignalWithPreamble(&params, random_byte, 10, modulated_signal,
-                                   10 * SPB *
-                                       (DATA_FRAME_LENGTH + PREAMBLE_LENGTH));
+  uint8_t random_byte = generateRandomFromRange(0, 255);
 
   timer_start(&tim2);
   while (1) {
     if (dataReady) {
-      float32_t y = (modulated_signal[j] *
-                     arm_cos_f32(FN * i * 2.0f * PI)); // + 1.0f) / 2.0f;
+      float32_t y =
+          (modulated_signal[j] * arm_cos_f32(FN * i * 2.0f * PI) + 1.0f) / 2.0f;
       val = y * 4000.0f;
       MCP4822_setValue(&MCP4822, val, &cfg);
       dataReady = 0;
+      if (j == SPB * (DATA_FRAME_LENGTH + PREAMBLE_LENGTH)) {
+        j = 0;
+        random_byte = generateRandomFromRange(0, 255);
+        arm_fill_f32(0, modulated_signal,
+                     SPB * (DATA_FRAME_LENGTH + PREAMBLE_LENGTH));
+        BPSK_getOutputSignalWithPreamble(
+            &params, &random_byte, 1, modulated_signal,
+            1 * SPB * (DATA_FRAME_LENGTH + PREAMBLE_LENGTH));
+      }
     }
   }
 }
@@ -152,13 +156,13 @@ void TIM2_IRQHandler() {
   timer_clearITflag(&tim2);
   if (dataReady) {
     char buf[20];
-    sprintf(buf, "Overrun");
+    sprintf(buf, "\r\n\r\nOverrun");
     uart_sendString(&uart2, buf);
     Default_Handler();
   }
 
   i = (i + 1) % (FS / FC);
-  j = (j + 1) % (10 * SPB * (DATA_FRAME_LENGTH + PREAMBLE_LENGTH));
+  j++;
 
   dataReady = 1;
 }
