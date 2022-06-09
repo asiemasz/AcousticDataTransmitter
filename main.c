@@ -87,7 +87,8 @@ static volatile uint8_t dataReady;
 
 float32_t buffer_LP_costas_I[COSTAS_LPF_ORDER],
     buffer_LP_costas_Q[COSTAS_LPF_ORDER];
-
+int8_t symbols[15000] = {0};
+uint16_t symbols_detected = 0;
 int main() {
   /// Peripherals initialization ///
   uart_init(&uart2);
@@ -176,14 +177,28 @@ int main() {
       float32_t locked =
           BPSK_carrierRecovery(&BPSK_params, buffer_filtered_f32, SAMPLES);
 
+      if (locked <= 0.7f) {
+        BPSK_reset(&BPSK_params);
+        dataReady = 0;
+        if (symbols_detected) {
+          timer_stop(&tim2);
+          for (uint16_t i = 0; i < symbols_detected; i++) {
+            sprintf(buf, "\r\n%d", symbols[i]);
+            uart_sendString(&uart2, buf);
+          }
+          timer_start(&tim2);
+        }
+        symbols_detected = 0;
+        arm_fill_f32(0, symbols_detected, 15000);
+        continue;
+      }
+
       float32_t temp[SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1];
 
       arm_conv_f32(buffer_filtered_f32, SAMPLES,
                    BPSK_params.matchedFilterCoeffs,
                    BPSK_params.matchedFilterCoeffsLength, temp);
 
-      arm_max_f32(temp, SAMPLES + BPSK_params.matchedFilterCoeffsLength - 1,
-                  &maxVal, &maxIdx);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Buffer after conv: \r\n");
       for (uint16_t i = 0; i < 2 * SAMPLES; i++) {
@@ -193,16 +208,17 @@ int main() {
         uart_sendString(&uart2, buf);
       }
 #endif
-      int8_t buffer_[SAMPLES / SPB + 1];
+
+      uint16_t symbols_num = SAMPLES / SPB + 1;
+      int8_t buffer_[symbols_num];
 
       BPSK_timingRecovery(&BPSK_params,
                           temp +
                               BPSK_params.samplesPerBit * BPSK_params.FSpan / 2,
-                          SAMPLES, buffer_, SAMPLES / SPB + 1);
-
+                          SAMPLES, symbols + symbols_detected, &symbols_num);
       uint16_t idx[SAMPLES / 312 + 2];
-      BPSK_findSymbolsStarts(&BPSK_params, buffer_, SAMPLES / SPB, idx,
-                             &foundFrames);
+      BPSK_findSymbolsStarts(&BPSK_params, symbols + symbols_detected,
+                             symbols_num, idx, &foundFrames);
 #ifdef DEBUG
       uart_sendString(&uart2, "\r\n\r\n Decode : \r\n ");
       for (uint16_t i = 0; i < 2 * SAMPLES / SPB; ++i) {
@@ -212,26 +228,19 @@ int main() {
 #endif
       uint8_t out_data[foundFrames + 1];
 
-      BPSK_demodulateSignal(&BPSK_params, buffer_, 2 * SAMPLES / SPB, idx,
-                            foundFrames, out_data, foundFrames);
-#ifdef DEBUG
-      uart_sendString(&uart2, "\r\n\r\n Data: \r\n");
+      BPSK_demodulateSignal(&BPSK_params, symbols + symbols_detected,
+                            symbols_num, idx, foundFrames, out_data,
+                            &foundFrames);
+
       for (uint16_t i = 0; i < foundFrames; ++i) {
         sprintf(buf, "%d %c%c%c%c%c%c%c%c \r\n", out_data[i],
                 BYTE_TO_BINARY(out_data[i]));
         uart_sendString(&uart2, buf);
       }
-#endif
-      uint16_t correct = 0;
-      for (uint8_t i = 0; i < foundFrames; i++) {
-        if (out_data[i] == 109 || out_data[i] == 222 || out_data[i] == 11)
-          correct++;
-      }
+      symbols_detected += symbols_num;
 
       dataReady = 0;
       end = time - start;
-      sprintf(buf, "\r\n %ld %d %d %f\r\n", time, correct, foundFrames, locked);
-      uart_sendString(&uart2, buf);
     }
   }
 }
