@@ -15,9 +15,7 @@ project(AcousticDataTransmitter)
 add_compile_options(
   -Wall
   -Wextra
-)
-
-add_compile_definitions(
+  -Wdouble-promotion
 )
 
 include_directories(
@@ -25,18 +23,10 @@ include_directories(
   "Drivers/CMSIS/DSP/Include"
   "Drivers/CMSIS/Device/ST/STM32F4xx/Include"
   "inc"
-  "DSP_own/src"
-  "MCP4822"
 )
 
-add_compile_definitions(
-  STM32F401xE
-  ARM_MATH_CM4
-  __FPU_PRESENT=1U
-  __FPU_USED=1U
-)
 
-file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
+file(GLOB C_SRCS
   "src/*.c"
   "Drivers/CMSIS/Device/ST/STM32F4xx/Source/*.c"
   "Drivers/CMSIS/DSP/Source/BasicMathFunction/*.c"
@@ -49,25 +39,38 @@ file(GLOB C_SRCS CMAKE_CONFIGURE_DEPENDS
   "Drivers/CMSIS/DSP/Source/StatisticsFunctions/*.c"  
   "Drivers/CMSIS/DSP/Source/SupportFunctions/*.c"  
   "Drivers/CMSIS/DSP/Source/TransformFunctions/*.c"  
-  "MCP4822/*.c"
-  "DSP_own/src/*.c"
   "main.c"
 )
 
-file(GLOB ASM_SRCS CMAKE_CONFIGURE_DEPENDS
+file(GLOB ASM_SRCS
   "startup/*.s"
   "Drivers/CMSIS/DSP/Source/TransformFunctions/*.s"
 )
 
-add_arm_executable(AcousticDataTransmitter ${CPP_SRCS} ${C_SRCS} ${ASM_SRCS})
+add_subdirectory(MCP4822)
 
+####################################################################################
+#This must be set explicitly before including DSP_own as it's dependend on CMSIS_DSP
+add_compile_definitions(
+  STM32F401xE
+  ARM_MATH_CM4
+  __FPU_PRESENT=1U
+  __FPU_USED=1U
+)
+add_compile_options(
+  -mfloat-abi=hard
+  -mfpu=fpv4-sp-d16
+)
+add_subdirectory(DSP_own)
+#####################################################################################
+
+add_arm_executable(AcousticDataTransmitter ${CPP_SRCS} ${C_SRCS} ${ASM_SRCS})
+arm_link_libraries(AcousticDataTransmitter MCP4822 DSP_own)
 
 # Print executable size
 add_custom_command(TARGET AcousticDataTransmitter
         POST_BUILD
         COMMAND arm-none-eabi-size ${elf_file})
-
-set(LINKER_SCRIPT "STM32F401RETx_FLASH.ld")
 
 find_program(OPENOCD_EXECUTABLE "openocd" PATHS DOC "OpenOCD debugger and flash utility")
 
