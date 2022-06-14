@@ -20,6 +20,21 @@
 
 /*
 #################################################################################
+   System specific parameters
+#################################################################################
+*/
+#define SAMPLES 2048
+#define FS 48000
+#define FSystem 84000000
+#define FC 8000
+#define ROLLOVER_FACTOR 0.5f
+#define FSPAN 2
+#define SPB 24
+#define COSTAS_LPF_ORDER 11
+#define NUM_TAPS_ARRAY_SIZE 42
+
+/*
+#################################################################################
    Peripherals init structures
 #################################################################################
 */
@@ -47,21 +62,6 @@ static const UART_initStruct uart2 = {.baudRate = 115200,
                                       .stopBits = UART_STOP_BITS_1,
                                       .wordLength = UART_WORD_LENGTH_8,
                                       .uart = USART2};
-
-/*
-#################################################################################
-   System specific parameters
-#################################################################################
-*/
-#define SAMPLES 2048
-#define FS 48000
-#define FSystem 84000000
-#define FC 8000
-#define ROLLOVER_FACTOR 0.5f
-#define FSPAN 2
-#define SPB 24
-#define COSTAS_LPF_ORDER 11
-#define NUM_TAPS_ARRAY_SIZE 42
 
 //#define DEBUG
 
