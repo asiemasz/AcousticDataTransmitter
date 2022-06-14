@@ -18,42 +18,11 @@
       (byte & 0x08 ? '1' : '0'), (byte & 0x04 ? '1' : '0'),                    \
       (byte & 0x02 ? '1' : '0'), (byte & 0x01 ? '1' : '0')
 
-#define SAMPLES 2048
-
-#define FS 48000
-#define FSystem 84000000
-#define FC 8000
-#define ROLLOVER_FACTOR 0.5f
-#define FSPAN 2
-#define SPB 24
-#define COSTAS_LPF_ORDER 11
-
-#define NUM_TAPS_ARRAY_SIZE 42
-
-//#define DEBUG
-
-static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
-    0.025733f,  0.000136f,  -0.022411f, -0.018886f, -0.000064f, 0.007460f,
-    -0.000137f, -0.000035f, 0.018552f,  0.029092f,  0.000119f,  -0.051176f,
-    -0.062519f, -0.000156f, 0.083532f,  0.093087f,  0.000129f,  -0.108148f,
-    -0.113604f, -0.000050f, 0.119073f,  0.119073f,  -0.000050f, -0.113604f,
-    -0.108148f, 0.000129f,  0.093087f,  0.083532f,  -0.000156f, -0.062519f,
-    -0.051176f, 0.000119f,  0.029092f,  0.018552f,  -0.000035f, -0.000137f,
-    0.007460f,  -0.000064f, -0.018886f, -0.022411f, 0.000136f,  0.025733f};
-
-float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {
-    0.078989f, 0.085868f, 0.091518f, 0.095721f, 0.098311f, 0.099186f,
-    0.098311f, 0.095721f, 0.091518f, 0.085868f, 0.078989f,
-};
-
-static q15_t temp_[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
-static float32_t temp_f32[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
-static volatile uint16_t time = 0;
-static uint16_t start, end;
-// Matched filter and pattern symbol
-static float32_t matchedCoeffs[FSPAN * SPB + 1];
-
-// Peripherals structs
+/*
+#################################################################################
+   Peripherals init structures
+#################################################################################
+*/
 static const ADC_initStruct adc = {
     .clockPrescaller = ADC_CLOCK_PRESCALLER_4,
     .continuous = ADC_CONTINUOUS_CONVERSION_MODE_DISABLED,
@@ -79,7 +48,52 @@ static const UART_initStruct uart2 = {.baudRate = 115200,
                                       .wordLength = UART_WORD_LENGTH_8,
                                       .uart = USART2};
 
-// Data storage
+/*
+#################################################################################
+   System specific parameters
+#################################################################################
+*/
+#define SAMPLES 2048
+#define FS 48000
+#define FSystem 84000000
+#define FC 8000
+#define ROLLOVER_FACTOR 0.5f
+#define FSPAN 2
+#define SPB 24
+#define COSTAS_LPF_ORDER 11
+#define NUM_TAPS_ARRAY_SIZE 42
+
+//#define DEBUG
+
+/*
+#################################################################################
+   Filters coeffs
+#################################################################################
+*/
+static const float32_t firCoeffs32[NUM_TAPS_ARRAY_SIZE] = {
+    0.025733f,  0.000136f,  -0.022411f, -0.018886f, -0.000064f, 0.007460f,
+    -0.000137f, -0.000035f, 0.018552f,  0.029092f,  0.000119f,  -0.051176f,
+    -0.062519f, -0.000156f, 0.083532f,  0.093087f,  0.000129f,  -0.108148f,
+    -0.113604f, -0.000050f, 0.119073f,  0.119073f,  -0.000050f, -0.113604f,
+    -0.108148f, 0.000129f,  0.093087f,  0.083532f,  -0.000156f, -0.062519f,
+    -0.051176f, 0.000119f,  0.029092f,  0.018552f,  -0.000035f, -0.000137f,
+    0.007460f,  -0.000064f, -0.018886f, -0.022411f, 0.000136f,  0.025733f};
+
+static const float32_t lpFIRCoeffs[COSTAS_LPF_ORDER] = {
+    0.078989f, 0.085868f, 0.091518f, 0.095721f, 0.098311f, 0.099186f,
+    0.098311f, 0.095721f, 0.091518f, 0.085868f, 0.078989f,
+};
+
+/*
+#################################################################################
+   Variables for data storage and processing
+#################################################################################
+*/
+static float32_t temp_f32[2 * SAMPLES + NUM_TAPS_ARRAY_SIZE - 1];
+static volatile uint16_t time = 0;
+static uint16_t start, end;
+// Matched filter and pattern symbol
+static float32_t matchedCoeffs[FSPAN * SPB + 1];
 static volatile uint16_t dmaBuffer[SAMPLES * 2];
 static float32_t buffer_filtered_f32[SAMPLES];
 static float32_t buffer_input_f32[SAMPLES];
@@ -89,6 +103,12 @@ float32_t buffer_LP_costas_I[COSTAS_LPF_ORDER],
     buffer_LP_costas_Q[COSTAS_LPF_ORDER];
 int8_t symbols[15000] = {0};
 uint16_t symbols_detected = 0;
+
+/*
+#################################################################################
+   Program run code
+#################################################################################
+*/
 int main() {
   /// Peripherals initialization ///
   uart_init(&uart2);
@@ -245,15 +265,17 @@ int main() {
   }
 }
 
+/*
+#################################################################################
+   Interrupt handlers
+#################################################################################
+*/
+
 void DMA2_Stream4_IRQHandler() {
   char buf[20];
   if (dataReady) {
     sprintf(buf, "Error! Overrun \r\n");
     uart_sendString(&uart2, buf);
-    __DMB();
-    __DMB();
-    __DMB();
-
     Default_Handler();
   }
 
@@ -269,16 +291,9 @@ void DMA2_Stream4_IRQHandler() {
   if (dma_streamGetITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE)) {
     dma_streamClearITFlag(DMA2, 4, DMA_IT_FLAG_TRANSFER_COMPLETE);
     if (!dataReady) {
-#ifdef DEBUG
-      uart_sendString(&uart2, "\r\n Buffer ADC: \r\n");
-#endif
       for (uint16_t i = SAMPLES; i < 2 * SAMPLES; i++) {
         buffer_input_f32[i - SAMPLES] =
             (float32_t)dmaBuffer[i] / 4096.0f * 3.3f;
-#ifdef DEBUG
-        sprintf(buf, "%f \r\n", buffer_input_f32[i]);
-        uart_sendString(&uart2, buf);
-#endif
       }
       dataReady = 0x1;
       start = time;

@@ -6,40 +6,34 @@ set(CMAKE_SYSTEM_PROCESSOR arm)
 set(CMAKE_C_COMPILER arm-none-eabi-gcc)
 set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
 set(CMAKE_ASM_COMPILER arm-none-eabi-gcc)
-set(CMAKE_AR arm-none-eabi-ar)
-set(CMAKE_OBJCOPY arm-none-eabi-objcopy)
-set(CMAKE_OBJDUMP arm-none-eabi-objdump)
-set(CMAKE_NM arm-none-eabi-nm)
-set(CMAKE_STRIP arm-none-eabi-strip)
-set(CMAKE_RANLIB arm-none-eabi-ranlib)
+set(CMAKE_AR arm-none-eabi-ar) #Creates archives or static libraries
+set(CMAKE_OBJCOPY arm-none-eabi-objcopy) #Converts obj file format
+set(CMAKE_OBJDUMP arm-none-eabi-objdump) #Displays information from object files
+set(CMAKE_NM arm-none-eabi-nm) #Lists symbols from object files
+set(CMAKE_STRIP arm-none-eabi-strip) #Discard symbols and other data from object files
+set(CMAKE_RANLIB arm-none-eabi-ranlib) #Generates an index to an archive
 
 # When trying to link cross compiled test program, error occurs, so setting test compilation to static library
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-# Don't know if following setting works also for Ninja
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Remove default static libraries for win32
 set(CMAKE_C_STANDARD_LIBRARIES "")
 
-macro(add_arm_executable target_name)
-
-# Output files
-set(elf_file ${target_name}.elf)
-set(map_file ${target_name}.map)
-set(hex_file ${target_name}.hex)
-set(bin_file ${target_name}.bin)
-set(lss_file ${target_name}.lss)
-set(dmp_file ${target_name}.dmp)
-
-set(ARM_OPTIONS -mcpu=cortex-m4 -mfloat-abi=hard -mthumb --specs=nano.specs -mfpu=fpv4-sp-d16)
+set(ARM_OPTIONS 
+   -mcpu=cortex-m4 
+   -mfloat-abi=hard 
+   -mthumb 
+   --specs=nano.specs 
+   -mfpu=fpv4-sp-d16
+)
 
 add_compile_options(
   ${ARM_OPTIONS}
   -fmessage-length=0
   -funsigned-char
   -fsingle-precision-constant
-  -Wdouble-promotion
   -ffast-math
   -ffunction-sections
   -fdata-sections
@@ -61,6 +55,16 @@ add_link_options(
   LINKER:--build-id
   LINKER:--print-memory-usage
 )
+
+macro(add_arm_executable target_name)
+
+# Output files
+set(elf_file ${target_name}.elf)
+set(map_file ${target_name}.map)
+set(hex_file ${target_name}.hex)
+set(bin_file ${target_name}.bin)
+set(lss_file ${target_name}.lss)
+set(dmp_file ${target_name}.dmp)
 
 add_executable(${elf_file} ${ARGN})
 
