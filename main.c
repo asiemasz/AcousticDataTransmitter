@@ -11,6 +11,8 @@
 #include "IIR_filter.h"
 #include "SRRC_filter.h"
 
+#define FSystem 84000000
+
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)                                                   \
   (byte & 0x80 ? '1' : '0'), (byte & 0x40 ? '1' : '0'),                        \
@@ -55,7 +57,6 @@ static const UART_initStruct uart2 = {.baudRate = 115200,
 */
 #define SAMPLES 2048
 #define FS 48000
-#define FSystem 84000000
 #define FC 8000
 #define ROLLOVER_FACTOR 0.5f
 #define FSPAN 2
